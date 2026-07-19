@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Por Pessoa — Controle de Carteira</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="titulo-pagina">🧑‍💼 Visão por Pessoa</div>
+      <div class="subtitulo">Carga de trabalho de cada membro da equipe</div>
+      <div id="lista"><div class="vazio">Carregando...</div></div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    (async () => {
+      await montarSidebar('pessoas.html');
+      const pessoas = await api('/api/pessoas');
+      document.getElementById('lista').innerHTML = pessoas.length ? pessoas.map(p => `
+        <div class="card">
+          <h2>👤 ${esc(p.nome)} <span class="badge ativo_ok" style="margin-left:8px">${p.total} cliente${p.total !== 1 ? 's' : ''}</span></h2>
+          <div class="tabela">
+            <div class="linha cabecalho" style="grid-template-columns: 2fr 1.2fr 3fr"><div>Cliente</div><div>Status</div><div>Funções</div></div>
+            ${p.clientes.map(c => `
+              <div class="linha" style="grid-template-columns: 2fr 1.2fr 3fr">
+                <div><b>${esc(c.cliente)}</b></div>
+                <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
+                <div>${esc(c.funcoes.join(', '))}</div>
+              </div>`).join('')}
+          </div>
+        </div>`).join('') : '<div class="vazio">Nenhum responsável cadastrado ainda.</div>';
+    })();
+  </script>
+</body>
+</html>

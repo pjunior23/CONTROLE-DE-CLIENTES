@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clientes — Controle de Carteira</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="toolbar">
+        <div>
+          <div class="titulo-pagina">👥 Clientes</div>
+          <div class="subtitulo" style="margin-bottom:0" id="contagem"></div>
+        </div>
+        <button class="btn ouro" id="btnNovo" style="display:none" onclick="abrirModal()">➕ Novo Cliente</button>
+      </div>
+
+      <div class="filtros">
+        <input type="text" id="fBusca" placeholder="🔍 Buscar cliente...">
+        <select id="fStatus">
+          <option value="">Todos os status</option>
+          <option value="ativo">🟣 Ativo</option>
+          <option value="ativo_ok">🟢 Ativo OK</option>
+          <option value="prelancamento">🟡 Pré-lançamento</option>
+          <option value="saindo">🔴 Saindo</option>
+        </select>
+        <select id="fMarca"><option value="">Todas as marcas</option></select>
+        <select id="fPessoa"><option value="">Todas as pessoas</option></select>
+      </div>
+
+      <div class="tabela" id="tabela"></div>
+    </main>
+  </div>
+
+  <!-- Modal de cliente -->
+  <div class="modal-fundo" id="modalFundo">
+    <div class="modal">
+      <h2 id="modalTitulo">➕ Novo Cliente</h2>
+      <form id="formCliente">
+        <div class="grid-2">
+          <div><label>Nome do cliente *</label><input id="cNome" required placeholder="Ex.: Fast Escova Aclimação"></div>
+          <div><label>Marca / Rede</label><input id="cMarca" list="marcas" placeholder="Ex.: Fast Escova"><datalist id="marcas"></datalist></div>
+        </div>
+        <div class="grid-2">
+          <div><label>Status</label>
+            <select id="cStatus">
+              <option value="ativo">🟣 Ativo</option>
+              <option value="ativo_ok">🟢 Ativo OK</option>
+              <option value="prelancamento">🟡 Pré-lançamento</option>
+              <option value="saindo">🔴 Saindo</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" id="camposFuncoes"></div>
+        <div class="grid-2">
+          <div><label>📅 Data de inauguração</label><input type="date" id="cInauguracao"></div>
+          <div><label>📅 Data de saída</label><input type="date" id="cSaida"></div>
+        </div>
+        <div class="grid-2">
+          <div><label>🎂 Aniversário da unidade</label><input type="date" id="cAniversario"></div>
+          <div><label>📅 Entrada na carteira</label><input type="date" id="cEntrada"></div>
+        </div>
+        <div class="check"><input type="checkbox" id="cAcesso"><label style="margin:0">✅ Acesso de tráfego liberado</label></div>
+        <label>📝 Observações</label>
+        <textarea id="cObs" rows="2"></textarea>
+        <div class="erro" id="modalErro"></div>
+        <div class="rodape">
+          <button type="button" class="btn perigo" id="btnExcluir" style="display:none;margin-right:auto" onclick="excluirCliente()">🗑️ Excluir</button>
+          <button type="button" class="btn" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn ouro">💾 Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    let CLIENTES = [], FUNCOES = [], EQUIPE = [], editandoId = null;
+
+    const grade = 'grid-template-columns: 2fr 1fr 1.2fr 1.2fr 1.2fr 90px';
+
+    function opcoesEquipe(selecionado) {
+      const nomes = EQUIPE.map(m => m.nome);
+      if (selecionado && !nomes.some(n => n.toUpperCase() === selecionado.toUpperCase()) && selecionado.toUpperCase() !== 'EQUIPE PRÓPRIA') {
+        nomes.push(selecionado);
+      }
+      return ['<option value="">—</option>',
+        ...nomes.sort((a,b) => a.localeCompare(b)).map(n =>
+          `<option value="${esc(n)}" ${selecionado && n.toUpperCase() === selecionado.toUpperCase() ? 'selected' : ''}>${esc(n)}</option>`),
+        `<option value="EQUIPE PRÓPRIA" ${selecionado === 'EQUIPE PRÓPRIA' ? 'selected' : ''}>EQUIPE PRÓPRIA</option>`,
+      ].join('');
+    }
+
+    function render() {
+      const busca = document.getElementById('fBusca').value.trim().toLowerCase();
+      const st = document.getElementById('fStatus').value;
+      const marca = document.getElementById('fMarca').value;
+      const pessoa = document.getElementById('fPessoa').value.toUpperCase();
+      const filtrados = CLIENTES.filter(c => {
+        if (busca && !c.nome.toLowerCase().includes(busca)) return false;
+        if (st && c.status !== st) return false;
+        if (marca && (c.marca || '') !== marca) return false;
+        if (pessoa && !FUNCOES.some(f => (c.responsaveis[f.key] || '').toUpperCase() === pessoa)) return false;
+        return true;
+      });
+      document.getElementById('contagem').textContent = `${filtrados.length} de ${CLIENTES.length} clientes`;
+      const podeEditar = window.USUARIO.papel === 'admin';
+      document.getElementById('tabela').innerHTML = [
+        `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Acesso</div></div>`,
+        ...filtrados.map(c => `
+          <div class="linha ${podeEditar ? 'clicavel' : ''}" style="${grade}" ${podeEditar ? `onclick="abrirModal('${c.id}')"` : ''}>
+            <div><b>${esc(c.nome)}</b>${c.obs ? `<br><small style="color:var(--texto-suave)">${esc(c.obs)}</small>` : ''}</div>
+            <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
+            <div>${esc(c.responsaveis.atendimento || '—')}</div>
+            <div>${esc(c.responsaveis.planejamento || '—')}</div>
+            <div>${esc(c.responsaveis.copy || '—')}</div>
+            <div><span class="badge ${c.acessoTrafego ? 'sim' : 'nao'}">${c.acessoTrafego ? 'SIM' : 'NÃO'}</span></div>
+          </div>`),
+      ].join('') || '<div class="vazio">Nenhum cliente encontrado.</div>';
+    }
+
+    function abrirModal(id) {
+      editandoId = id || null;
+      const c = id ? CLIENTES.find(x => x.id === id) : null;
+      document.getElementById('modalTitulo').textContent = c ? `✏️ ${c.nome}` : '➕ Novo Cliente';
+      document.getElementById('cNome').value = c?.nome || '';
+      document.getElementById('cMarca').value = c?.marca || '';
+      document.getElementById('marcas').innerHTML = [...new Set(CLIENTES.map(x => x.marca).filter(Boolean))].sort().map(m => `<option value="${esc(m)}">`).join('');
+      document.getElementById('cStatus').value = c?.status || 'ativo';
+      document.getElementById('cInauguracao').value = c?.dataInauguracao || '';
+      document.getElementById('cSaida').value = c?.dataSaida || '';
+      document.getElementById('cAniversario').value = c?.aniversario || '';
+      document.getElementById('cEntrada').value = c?.dataEntrada || '';
+      document.getElementById('cAcesso').checked = !!c?.acessoTrafego;
+      document.getElementById('cObs').value = c?.obs || '';
+      document.getElementById('camposFuncoes').innerHTML = FUNCOES.map(f => `
+        <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(c?.responsaveis?.[f.key] || '')}</select></div>`).join('');
+      document.getElementById('btnExcluir').style.display = c ? 'inline-block' : 'none';
+      document.getElementById('modalErro').textContent = '';
+      document.getElementById('modalFundo').classList.add('aberto');
+    }
+
+    function fecharModal() { document.getElementById('modalFundo').classList.remove('aberto'); }
+
+    async function excluirCliente() {
+      const c = CLIENTES.find(x => x.id === editandoId);
+      if (!confirm(`Excluir o cliente "${c.nome}"? Essa ação não pode ser desfeita.`)) return;
+      try {
+        await api(`/api/clientes/${editandoId}`, { method: 'DELETE' });
+        fecharModal(); await carregar();
+      } catch (e) { document.getElementById('modalErro').textContent = e.message; }
+    }
+
+    document.getElementById('formCliente').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const responsaveis = {};
+      document.querySelectorAll('[data-funcao]').forEach(s => responsaveis[s.dataset.funcao] = s.value);
+      const corpo = {
+        nome: document.getElementById('cNome').value,
+        marca: document.getElementById('cMarca').value,
+        status: document.getElementById('cStatus').value,
+        responsaveis,
+        acessoTrafego: document.getElementById('cAcesso').checked,
+        dataInauguracao: document.getElementById('cInauguracao').value || null,
+        dataSaida: document.getElementById('cSaida').value || null,
+        aniversario: document.getElementById('cAniversario').value || null,
+        dataEntrada: document.getElementById('cEntrada').value || null,
+        obs: document.getElementById('cObs').value,
+      };
+      try {
+        if (editandoId) await api(`/api/clientes/${editandoId}`, { method: 'PUT', body: corpo });
+        else await api('/api/clientes', { method: 'POST', body: corpo });
+        fecharModal(); await carregar();
+      } catch (e2) { document.getElementById('modalErro').textContent = e2.message; }
+    });
+
+    async function carregar() {
+      [CLIENTES, EQUIPE] = await Promise.all([api('/api/clientes'), api('/api/equipe')]);
+      CLIENTES.sort((a, b) => a.nome.localeCompare(b.nome));
+      const pessoas = new Set();
+      CLIENTES.forEach(c => FUNCOES.forEach(f => {
+        const n = (c.responsaveis[f.key] || '').trim();
+        if (n && n.toUpperCase() !== 'EQUIPE PRÓPRIA') pessoas.add(n);
+      }));
+      const sel = document.getElementById('fPessoa');
+      const atual = sel.value;
+      sel.innerHTML = '<option value="">Todas as pessoas</option>' +
+        [...pessoas].sort((a,b) => a.localeCompare(b)).map(p => `<option ${p === atual ? 'selected' : ''}>${esc(p)}</option>`).join('');
+      const selM = document.getElementById('fMarca');
+      const atualM = selM.value;
+      selM.innerHTML = '<option value="">Todas as marcas</option>' +
+        [...new Set(CLIENTES.map(c => c.marca).filter(Boolean))].sort().map(m => `<option ${m === atualM ? 'selected' : ''}>${esc(m)}</option>`).join('');
+      render();
+    }
+
+    (async () => {
+      const user = await montarSidebar('clientes.html');
+      if (user.papel === 'admin') document.getElementById('btnNovo').style.display = 'inline-block';
+      FUNCOES = (await api('/api/meta')).funcoes;
+      ['fBusca', 'fStatus', 'fMarca', 'fPessoa'].forEach(id => document.getElementById(id).addEventListener('input', render));
+      await carregar();
+    })();
+  </script>
+</body>
+</html>

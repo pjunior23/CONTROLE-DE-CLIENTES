@@ -1,0 +1,9 @@
+# Sensível — NUNCA versionar
+.env
+data/
+
+# Dependências e lixo
+node_modules/
+npm-debug.log
+*.tmp
+.DS_Store

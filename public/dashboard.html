@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — Controle de Carteira</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="titulo-pagina">📊 Dashboard</div>
+      <div class="subtitulo" id="saudacao">Carregando...</div>
+
+      <div class="metricas" id="metricas"></div>
+
+      <div class="card">
+        <h2>🚨 Alertas</h2>
+        <div id="alertas"><div class="vazio">Carregando...</div></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    (async () => {
+      const user = await montarSidebar('dashboard.html');
+      document.getElementById('saudacao').textContent =
+        user.papel === 'admin' ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
+
+      const [clientes, alertas] = await Promise.all([api('/api/clientes'), api('/api/alertas')]);
+
+      const cont = (s) => clientes.filter(c => c.status === s).length;
+      document.getElementById('metricas').innerHTML = `
+        <div class="metrica destaque"><div class="valor">${clientes.length}</div><div class="rotulo">👥 Total de clientes</div></div>
+        <div class="metrica"><div class="valor">${cont('ativo') + cont('ativo_ok')}</div><div class="rotulo">🟢 Ativos</div></div>
+        <div class="metrica"><div class="valor">${cont('prelancamento')}</div><div class="rotulo">🟡 Pré-lançamento</div></div>
+        <div class="metrica"><div class="valor">${cont('saindo')}</div><div class="rotulo">🔴 Saindo</div></div>`;
+
+      const blocos = [];
+      ['inauguracoes', 'aniversarios', 'saidas', 'pendencias'].forEach(k => { if (!alertas[k]) alertas[k] = []; });
+      for (const a of alertas.inauguracoes) {
+        blocos.push(`<div class="alerta amarelo">🎉 <div><b>${esc(a.cliente)}</b> — inauguração em <b>${fmtData(a.data)}</b></div></div>`);
+      }
+      for (const a of alertas.aniversarios) {
+        blocos.push(`<div class="alerta amarelo">🎂 <div><b>${esc(a.cliente)}</b> — aniversário da unidade em <b>${fmtData(a.data)}</b> (${a.emDias === 0 ? 'hoje!' : 'em ' + a.emDias + ' dia' + (a.emDias !== 1 ? 's' : '')})</div></div>`);
+      }
+      for (const a of alertas.saidas) {
+        blocos.push(`<div class="alerta vermelho">👋 <div><b>${esc(a.cliente)}</b> — saindo${a.data ? ' em <b>' + fmtData(a.data) + '</b>' : ' (sem data definida)'}</div></div>`);
+      }
+      for (const a of alertas.pendencias) {
+        blocos.push(`<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b> — pendências:<small>${esc(a.faltando.join(', '))}</small></div></div>`);
+      }
+      document.getElementById('alertas').innerHTML =
+        blocos.length ? blocos.join('') : '<div class="vazio">✅ Nenhum alerta no momento. Tudo em ordem!</div>';
+    })();
+  </script>
+</body>
+</html>

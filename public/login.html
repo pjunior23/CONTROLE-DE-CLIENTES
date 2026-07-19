@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — Controle de Carteira</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-box" id="form">
+      <h1>🎯 Controle de Carteira</h1>
+      <p>Acesso restrito à equipe da agência</p>
+      <label>Login</label>
+      <input type="text" id="login" autocomplete="username" required autofocus>
+      <label>Senha</label>
+      <input type="password" id="senha" autocomplete="current-password" required>
+      <div class="erro" id="erro"></div>
+      <button class="btn ouro" style="width:100%;margin-top:8px" type="submit">🔑 Entrar</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const erro = document.getElementById('erro');
+      erro.textContent = '';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            login: document.getElementById('login').value.trim(),
+            senha: document.getElementById('senha').value,
+          }),
+        });
+        const dados = await r.json();
+        if (!r.ok) { erro.textContent = dados.erro || 'Erro ao entrar'; return; }
+        window.location.href = '/dashboard.html';
+      } catch {
+        erro.textContent = 'Falha de conexão. Tente novamente.';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configurações — Controle de Carteira</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="titulo-pagina">⚙️ Configurações</div>
+      <div class="subtitulo">Equipe e contas de acesso (somente administradores)</div>
+
+      <div class="card">
+        <h2>🧑‍🤝‍🧑 Membros da Equipe</h2>
+        <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
+          Esses nomes aparecem nos dropdowns de responsáveis dos clientes.</p>
+        <form id="formMembro" style="display:flex;gap:10px;margin-bottom:14px">
+          <input id="mNome" placeholder="Nome do membro (ex.: MARCELA)" style="max-width:300px" required>
+          <button class="btn ouro mini" type="submit">➕ Adicionar</button>
+        </form>
+        <div id="listaEquipe" class="tabela"></div>
+      </div>
+
+      <div class="card">
+        <h2>🔐 Contas de Acesso</h2>
+        <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
+          Admin vê e edita tudo. Gestor vê apenas os clientes onde o membro vinculado aparece (sem editar).</p>
+        <button class="btn rosa mini" onclick="abrirModalUsuario()" style="margin-bottom:14px">➕ Novo Usuário</button>
+        <div id="listaUsuarios" class="tabela"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de usuário -->
+  <div class="modal-fundo" id="modalFundo">
+    <div class="modal" style="max-width:480px">
+      <h2 id="modalTitulo">➕ Novo Usuário</h2>
+      <form id="formUsuario">
+        <label>Nome completo *</label><input id="uNome" required>
+        <div class="grid-2">
+          <div><label>Login *</label><input id="uLogin" autocomplete="off"></div>
+          <div><label id="rotuloSenha">Senha * (mín. 6)</label><input id="uSenha" type="password" autocomplete="new-password"></div>
+        </div>
+        <div class="grid-2">
+          <div><label>Papel</label>
+            <select id="uPapel" onchange="toggleMembro()">
+              <option value="gestor">📈 Gestor de Tráfego</option>
+              <option value="admin">👑 Administrador</option>
+            </select>
+          </div>
+          <div id="campoMembro"><label>Membro da equipe vinculado</label><select id="uMembro"></select></div>
+        </div>
+        <div class="erro" id="modalErro"></div>
+        <div class="rodape">
+          <button type="button" class="btn perigo" id="btnExcluirU" style="display:none;margin-right:auto" onclick="excluirUsuario()">🗑️ Excluir</button>
+          <button type="button" class="btn" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn ouro">💾 Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    let EQUIPE = [], USUARIOS = [], editandoId = null;
+
+    async function carregar() {
+      [EQUIPE, USUARIOS] = await Promise.all([api('/api/equipe'), api('/api/usuarios')]);
+      EQUIPE.sort((a, b) => a.nome.localeCompare(b.nome));
+
+      document.getElementById('listaEquipe').innerHTML = EQUIPE.length ? EQUIPE.map(m => `
+        <div class="linha" style="grid-template-columns: 1fr 100px">
+          <div>👤 <b>${esc(m.nome)}</b></div>
+          <div><button class="btn perigo mini" onclick="removerMembro('${m.id}', '${esc(m.nome)}')">Remover</button></div>
+        </div>`).join('') : '<div class="vazio">Nenhum membro cadastrado.</div>';
+
+      document.getElementById('listaUsuarios').innerHTML = [
+        `<div class="linha cabecalho" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 90px"><div>Nome</div><div>Login</div><div>Papel</div><div>Membro</div><div></div></div>`,
+        ...USUARIOS.map(u => `
+          <div class="linha" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 90px">
+            <div><b>${esc(u.nome)}</b></div>
+            <div>${esc(u.login)}</div>
+            <div><span class="badge ${u.papel}">${u.papel === 'admin' ? '👑 Admin' : '📈 Gestor'}</span></div>
+            <div>${esc(u.membroNome || '—')}</div>
+            <div><button class="btn mini" onclick="abrirModalUsuario('${u.id}')">✏️ Editar</button></div>
+          </div>`),
+      ].join('');
+    }
+
+    document.getElementById('formMembro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('/api/equipe', { method: 'POST', body: { nome: document.getElementById('mNome').value } });
+        document.getElementById('mNome').value = '';
+        await carregar();
+      } catch (err) { alert(err.message); }
+    });
+
+    async function removerMembro(id, nome) {
+      if (!confirm(`Remover "${nome}" da equipe? (os clientes que apontam para esse nome não são alterados)`)) return;
+      try { await api(`/api/equipe/${id}`, { method: 'DELETE' }); await carregar(); }
+      catch (err) { alert(err.message); }
+    }
+
+    function toggleMembro() {
+      document.getElementById('campoMembro').style.display =
+        document.getElementById('uPapel').value === 'gestor' ? 'block' : 'none';
+    }
+
+    function abrirModalUsuario(id) {
+      editandoId = id || null;
+      const u = id ? USUARIOS.find(x => x.id === id) : null;
+      document.getElementById('modalTitulo').textContent = u ? `✏️ ${u.nome}` : '➕ Novo Usuário';
+      document.getElementById('uNome').value = u?.nome || '';
+      document.getElementById('uLogin').value = u?.login || '';
+      document.getElementById('uLogin').disabled = !!u;
+      document.getElementById('uSenha').value = '';
+      document.getElementById('rotuloSenha').textContent = u ? 'Nova senha (vazio = manter)' : 'Senha * (mín. 6)';
+      document.getElementById('uPapel').value = u?.papel || 'gestor';
+      document.getElementById('uMembro').innerHTML = '<option value="">— nenhum —</option>' +
+        EQUIPE.map(m => `<option value="${esc(m.nome)}" ${u?.membroNome === m.nome ? 'selected' : ''}>${esc(m.nome)}</option>`).join('');
+      toggleMembro();
+      document.getElementById('btnExcluirU').style.display = u && u.id !== window.USUARIO.id ? 'inline-block' : 'none';
+      document.getElementById('modalErro').textContent = '';
+      document.getElementById('modalFundo').classList.add('aberto');
+    }
+
+    function fecharModal() { document.getElementById('modalFundo').classList.remove('aberto'); }
+
+    async function excluirUsuario() {
+      const u = USUARIOS.find(x => x.id === editandoId);
+      if (!confirm(`Excluir a conta de "${u.nome}"?`)) return;
+      try { await api(`/api/usuarios/${editandoId}`, { method: 'DELETE' }); fecharModal(); await carregar(); }
+      catch (err) { document.getElementById('modalErro').textContent = err.message; }
+    }
+
+    document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const corpo = {
+        nome: document.getElementById('uNome').value,
+        papel: document.getElementById('uPapel').value,
+        membroNome: document.getElementById('uMembro').value || null,
+      };
+      const senha = document.getElementById('uSenha').value;
+      if (senha) corpo.senha = senha;
+      try {
+        if (editandoId) {
+          await api(`/api/usuarios/${editandoId}`, { method: 'PUT', body: corpo });
+        } else {
+          corpo.login = document.getElementById('uLogin').value;
+          if (!corpo.senha) throw new Error('Senha é obrigatória para novo usuário');
+          await api('/api/usuarios', { method: 'POST', body: corpo });
+        }
+        fecharModal(); await carregar();
+      } catch (err) { document.getElementById('modalErro').textContent = err.message; }
+    });
+
+    (async () => {
+      const user = await montarSidebar('configuracoes.html');
+      if (user.papel !== 'admin') { window.location.href = '/dashboard.html'; return; }
+      await carregar();
+    })();
+  </script>
+</body>
+</html>
