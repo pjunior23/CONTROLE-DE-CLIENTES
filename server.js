@@ -239,7 +239,8 @@ app.get('/api/alertas', requireAuth, (req, res) => {
         alertas.inauguracoes.push({ cliente: c.nome, data: c.dataInauguracao, id: c.id });
       }
     }
-    if (c.aniversario && c.status !== 'saindo') {
+    if (c.aniversario && c.status !== 'saindo' && statusEfetivoSrv(c) !== 'prelancamento') {
+      // Aniversário só conta pra quem já inaugurou de fato (senão é a mesma data da inauguração futura)
       // Aniversário se repete todo ano: calcula a próxima ocorrência (mês/dia)
       const [, m, d] = c.aniversario.split('-').map(Number);
       let prox = new Date(hoje.getFullYear(), m - 1, d);
