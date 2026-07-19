@@ -40,6 +40,7 @@
     }
 
     let PESSOAS = [];
+    let SOU_ADMIN = false;
 
     function render() {
       const busca = (document.getElementById('pBusca').value || '').trim().toLowerCase();
@@ -54,7 +55,7 @@
             <div class="tabela">
               <div class="linha cabecalho" style="grid-template-columns: 2fr 1.2fr 3fr"><div>Cliente</div><div>Status</div><div>Funções</div></div>
               ${p.clientes.map(c => `
-                <div class="linha" style="grid-template-columns: 2fr 1.2fr 3fr">
+                <div class="linha ${SOU_ADMIN ? 'clicavel' : ''}" style="grid-template-columns: 2fr 1.2fr 3fr" ${SOU_ADMIN ? `onclick="location.href='clientes.html?abrir=${c.id}'"` : ''}>
                   <div><b>${esc(c.cliente)}</b></div>
                   <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
                   <div>${esc(c.funcoes.join(', '))}</div>
@@ -65,7 +66,8 @@
     }
 
     (async () => {
-      await montarSidebar('pessoas.html');
+      const user = await montarSidebar('pessoas.html');
+      SOU_ADMIN = user.papel === 'admin';
       PESSOAS = await api('/api/pessoas');
       render();
     })();

@@ -270,10 +270,14 @@
       if (user.papel === 'admin') document.getElementById('btnNovo').style.display = 'inline-block';
       FUNCOES = (await api('/api/meta')).funcoes;
       // Filtro vindo dos cards do dashboard (?status=...)
-      const param = new URLSearchParams(location.search).get('status');
+      const params = new URLSearchParams(location.search);
+      const param = params.get('status');
       if (param) document.getElementById('fStatus').value = param;
       ['fBusca', 'fStatus', 'fMarca', 'fPessoa'].forEach(id => document.getElementById(id).addEventListener('input', render));
       await carregar();
+      // Abrir direto o cadastro de um cliente específico (vindo da Visão por Pessoa, por exemplo)
+      const abrirId = params.get('abrir');
+      if (abrirId && user.papel === 'admin') abrirModal(abrirId);
     })();
   </script>
 </body>
