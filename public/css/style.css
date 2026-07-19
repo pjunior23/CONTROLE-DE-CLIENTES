@@ -126,7 +126,6 @@ a { color: inherit; text-decoration: none; }
 }
 .badge.ativo         { background: rgba(46,204,113,.15); color: var(--verde); }
 .badge.saiu          { background: rgba(255,255,255,.10); color: var(--texto-suave); }
-.badge.ativo_ok      { background: rgba(46,204,113,.15); color: var(--verde); }
 .badge.prelancamento { background: rgba(241,196,15,.15); color: var(--amarelo); }
 .badge.saindo        { background: rgba(231,76,60,.18); color: var(--vermelho); }
 .badge.sim           { background: rgba(46,204,113,.15); color: var(--verde); }

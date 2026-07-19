@@ -11,7 +11,6 @@ const FUNCAO_LABEL = {
 
 const STATUS_LABEL = {
   ativo: '🟢 Ativo',
-  ativo_ok: '🟢 Ativo OK',
   prelancamento: '🟡 Em Inauguração',
   saindo: '🔴 Saindo',
 };

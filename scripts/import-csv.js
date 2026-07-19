@@ -102,7 +102,6 @@ function converterStatus(v) {
   const s = String(v ?? '').trim().toLowerCase();
   if (s.includes('pré') || s.includes('pre-') || s.includes('lançamento') || s.includes('inaugura')) return 'prelancamento';
   if (s.includes('sai') || s.includes('cancel') || s.includes('encerr')) return 'saindo';
-  if (s.includes('ok')) return 'ativo_ok';
   return 'ativo';
 }
 

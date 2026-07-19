@@ -29,7 +29,7 @@ const FUNCOES = [
   { key: 'edicaoVideos', label: 'Edição de Vídeos' },
 ];
 
-const STATUS_VALIDOS = ['ativo', 'ativo_ok', 'prelancamento', 'saindo'];
+const STATUS_VALIDOS = ['ativo', 'prelancamento', 'saindo'];
 
 // ------------------------------------------------------------
 // Persistência simples em JSON
