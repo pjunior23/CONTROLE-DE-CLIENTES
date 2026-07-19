@@ -1,4 +1,4 @@
-# 🎯 Controle de Carteira
+# ✨ Controle de Clientes — Beleza Boost
 
 App web de controle de clientes da carteira de uma agência de tráfego pago. Substitui a planilha "Clientes e Responsáveis" por um sistema com login, permissões, alertas e visão por pessoa.
 

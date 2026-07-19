@@ -116,8 +116,9 @@ function clientesVisiveis(user) {
   if (user.papel === 'admin') return todos;
   const nome = (user.membroNome || '').trim().toUpperCase();
   if (!nome) return [];
+  // Nomes compostos ("Juliana/Paula") contam para cada pessoa
   return todos.filter(c =>
-    FUNCOES.some(f => (c.responsaveis?.[f.key] || '').trim().toUpperCase() === nome)
+    FUNCOES.some(f => (c.responsaveis?.[f.key] || '').toUpperCase().split('/').map(s => s.trim()).includes(nome))
   );
 }
 
@@ -133,7 +134,8 @@ app.post('/api/login', (req, res) => {
   }
   req.session.user = {
     id: user.id, login: user.login, nome: user.nome,
-    papel: user.papel, membroNome: user.membroNome, agencyId: user.agencyId,
+    papel: user.papel, funcao: user.funcao || null,
+    membroNome: user.membroNome, agencyId: user.agencyId,
   };
   res.json({ ok: true, user: req.session.user });
 });
@@ -160,7 +162,7 @@ function validarCliente(body) {
 function montarCliente(body, existente) {
   const resp = {};
   FUNCOES.forEach(f => { resp[f.key] = String(body.responsaveis?.[f.key] ?? existente?.responsaveis?.[f.key] ?? '').trim(); });
-  return {
+  const cli = {
     id: existente?.id || crypto.randomUUID(),
     agencyId: existente?.agencyId || DEFAULT_AGENCY,
     nome: String(body.nome ?? existente?.nome ?? '').trim(),
@@ -176,6 +178,12 @@ function montarCliente(body, existente) {
     criadoEm: existente?.criadoEm || new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),
   };
+  // Aniversário da unidade herda dia/mês da inauguração quando não informado
+  if (!cli.aniversario && cli.dataInauguracao) {
+    const [, m, d] = cli.dataInauguracao.split('-');
+    cli.aniversario = `2000-${m}-${d}`;
+  }
+  return cli;
 }
 
 app.post('/api/clientes', requireAdmin, (req, res) => {
@@ -223,6 +231,8 @@ app.get('/api/alertas', requireAuth, (req, res) => {
   const alertas = { inauguracoes: [], aniversarios: [], saidas: [], pendencias: [] };
 
   for (const c of clientes) {
+    // Cliente que já saiu (data de saída no passado) não gera alertas
+    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) continue;
     if (c.dataInauguracao) {
       const d = new Date(c.dataInauguracao + 'T00:00:00');
       if (d >= hoje && d <= limite) {
@@ -244,7 +254,8 @@ app.get('/api/alertas', requireAuth, (req, res) => {
       alertas.saidas.push({ cliente: c.nome, data: c.dataSaida || null, id: c.id });
     }
     const faltando = FUNCOES.filter(f => !(c.responsaveis?.[f.key] || '').trim()).map(f => f.label);
-    if (!c.acessoTrafego) faltando.push('Acesso de Tráfego');
+    // Acesso de Tráfego desativado por enquanto (para reativar, descomente):
+    // if (!c.acessoTrafego) faltando.push('Acesso de Tráfego');
     if (faltando.length && c.status !== 'saindo') {
       alertas.pendencias.push({ cliente: c.nome, faltando, id: c.id });
     }
@@ -254,20 +265,38 @@ app.get('/api/alertas', requireAuth, (req, res) => {
   res.json(alertas);
 });
 
+// Status efetivo calculado pelas datas (mesma regra do frontend)
+function statusEfetivoSrv(c) {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) return 'saiu';
+  if (c.dataSaida) return 'saindo'; // data de saída futura → Saindo automático
+  if (c.status === 'saindo') return 'saindo';
+  if (c.dataInauguracao && new Date(c.dataInauguracao + 'T00:00:00') > hoje) return 'prelancamento';
+  if (c.status === 'prelancamento') return 'ativo';
+  return c.status;
+}
+
 // ------------------------------------------------------------
 // Visão por pessoa
 // ------------------------------------------------------------
 app.get('/api/pessoas', requireAuth, (req, res) => {
   const clientes = clientesVisiveis(req.session.user);
   const mapa = {};
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   for (const c of clientes) {
+    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) continue; // já saiu
     for (const f of FUNCOES) {
-      const nome = (c.responsaveis?.[f.key] || '').trim();
-      if (!nome || nome.toUpperCase() === 'EQUIPE PRÓPRIA') continue;
-      const chave = nome.toUpperCase();
-      if (!mapa[chave]) mapa[chave] = { nome, clientes: {} };
-      if (!mapa[chave].clientes[c.id]) mapa[chave].clientes[c.id] = { id: c.id, cliente: c.nome, status: c.status, funcoes: [] };
-      mapa[chave].clientes[c.id].funcoes.push(f.label);
+      const bruto = (c.responsaveis?.[f.key] || '').trim();
+      if (!bruto) continue;
+      const up = bruto.toUpperCase();
+      if (up === 'EQUIPE PRÓPRIA' || up === 'EQUIPE PROPRIA' || up === 'NÃO TEM' || up === 'NAO TEM') continue;
+      // "Juliana/Paula" conta para Juliana E para Paula
+      for (const parte of bruto.split('/').map(s => s.trim()).filter(Boolean)) {
+        const chave = parte.toUpperCase();
+        if (!mapa[chave]) mapa[chave] = { nome: parte, clientes: {} };
+        if (!mapa[chave].clientes[c.id]) mapa[chave].clientes[c.id] = { id: c.id, cliente: c.nome, status: statusEfetivoSrv(c), funcoes: [] };
+        if (!mapa[chave].clientes[c.id].funcoes.includes(f.label)) mapa[chave].clientes[c.id].funcoes.push(f.label);
+      }
     }
   }
   const pessoas = Object.values(mapa)
@@ -286,14 +315,27 @@ app.get('/api/equipe', requireAuth, (req, res) => {
 app.post('/api/equipe', requireAdmin, (req, res) => {
   const nome = String(req.body?.nome || '').trim();
   if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório' });
+  const funcao = FUNCOES.some(f => f.key === req.body?.funcao) ? req.body.funcao : null;
   const equipe = db.equipe();
   if (equipe.some(m => m.nome.toUpperCase() === nome.toUpperCase())) {
     return res.status(400).json({ erro: 'Membro já cadastrado' });
   }
-  const novo = { id: crypto.randomUUID(), agencyId: DEFAULT_AGENCY, nome };
+  const novo = { id: crypto.randomUUID(), agencyId: DEFAULT_AGENCY, nome, funcao };
   equipe.push(novo);
   db.saveEquipe(equipe);
   res.status(201).json(novo);
+});
+
+app.put('/api/equipe/:id', requireAdmin, (req, res) => {
+  const equipe = db.equipe();
+  const m = equipe.find(x => x.id === req.params.id);
+  if (!m) return res.status(404).json({ erro: 'Membro não encontrado' });
+  if (req.body?.nome) m.nome = String(req.body.nome).trim();
+  if (req.body?.funcao !== undefined) {
+    m.funcao = FUNCOES.some(f => f.key === req.body.funcao) ? req.body.funcao : null;
+  }
+  db.saveEquipe(equipe);
+  res.json(m);
 });
 
 app.delete('/api/equipe/:id', requireAdmin, (req, res) => {
@@ -313,7 +355,7 @@ app.get('/api/usuarios', requireAdmin, (req, res) => {
 });
 
 app.post('/api/usuarios', requireAdmin, (req, res) => {
-  const { login, senha, nome, papel, membroNome } = req.body || {};
+  const { login, senha, nome, papel, funcao, membroNome } = req.body || {};
   if (!login || !senha || !nome) return res.status(400).json({ erro: 'Informe login, senha e nome' });
   if (senha.length < 6) return res.status(400).json({ erro: 'Senha precisa de ao menos 6 caracteres' });
   if (!['admin', 'gestor'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
@@ -325,6 +367,7 @@ app.post('/api/usuarios', requireAdmin, (req, res) => {
     id: crypto.randomUUID(), agencyId: DEFAULT_AGENCY,
     login: String(login).trim(), senhaHash: bcrypt.hashSync(senha, 10),
     nome: String(nome).trim(), papel,
+    funcao: papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null,
     membroNome: papel === 'gestor' ? String(membroNome || '').trim() || null : null,
     criadoEm: new Date().toISOString(),
   };
@@ -338,13 +381,14 @@ app.put('/api/usuarios/:id', requireAdmin, (req, res) => {
   const usuarios = db.usuarios();
   const u = usuarios.find(x => x.id === req.params.id);
   if (!u) return res.status(404).json({ erro: 'Usuário não encontrado' });
-  const { senha, nome, papel, membroNome } = req.body || {};
+  const { senha, nome, papel, funcao, membroNome } = req.body || {};
   if (senha) {
     if (senha.length < 6) return res.status(400).json({ erro: 'Senha precisa de ao menos 6 caracteres' });
     u.senhaHash = bcrypt.hashSync(senha, 10);
   }
   if (nome) u.nome = String(nome).trim();
   if (papel && ['admin', 'gestor'].includes(papel)) u.papel = papel;
+  if (funcao !== undefined) u.funcao = u.papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null;
   if (membroNome !== undefined) u.membroNome = u.papel === 'gestor' ? String(membroNome || '').trim() || null : null;
   db.saveUsuarios(usuarios);
   const { senhaHash, ...semSenha } = u;
@@ -383,4 +427,4 @@ app.get('/', (req, res) => res.redirect('/dashboard.html'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 seedAdmin();
-app.listen(PORT, () => console.log(`🚀 Controle de Carteira rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Controle de Clientes rodando na porta ${PORT}`));

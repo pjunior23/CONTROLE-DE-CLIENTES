@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Por Pessoa — Controle de Carteira</title>
+  <title>Por Pessoa — Beleza Boost</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -12,30 +12,62 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar"></aside>
     <main class="conteudo">
-      <div class="titulo-pagina">🧑‍💼 Visão por Pessoa</div>
-      <div class="subtitulo">Carga de trabalho de cada membro da equipe</div>
+      <div class="toolbar">
+        <div>
+          <div class="titulo-pagina">🧑‍💼 Visão por Pessoa</div>
+          <div class="subtitulo" style="margin-bottom:0">Carga de trabalho de cada membro da equipe — clique no nome para abrir</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn mini" onclick="toggleTodos(true)">🔽 Abrir todos</button>
+          <button class="btn mini" onclick="toggleTodos(false)">🔼 Fechar todos</button>
+        </div>
+      </div>
+      <div class="filtros">
+        <input type="text" id="pBusca" placeholder="🔍 Buscar pessoa..." oninput="render()">
+        <select id="pOrdem" oninput="render()">
+          <option value="alfabetica">🔤 Ordem alfabética</option>
+          <option value="clientes">📊 Mais clientes primeiro</option>
+        </select>
+      </div>
       <div id="lista"><div class="vazio">Carregando...</div></div>
     </main>
   </div>
 
   <script src="js/app.js"></script>
   <script>
+    function toggleTodos(abrir) {
+      document.querySelectorAll('details.secao').forEach(d => d.open = abrir);
+    }
+
+    let PESSOAS = [];
+
+    function render() {
+      const busca = (document.getElementById('pBusca').value || '').trim().toLowerCase();
+      const ordem = document.getElementById('pOrdem').value;
+      let pessoas = PESSOAS.filter(p => !busca || p.nome.toLowerCase().includes(busca));
+      pessoas = [...pessoas].sort((a, b) =>
+        ordem === 'clientes' ? b.total - a.total : a.nome.localeCompare(b.nome));
+      document.getElementById('lista').innerHTML = pessoas.length ? pessoas.map(p => `
+        <details class="secao">
+          <summary>👤 ${esc(p.nome)} <span class="contador">${p.total} cliente${p.total !== 1 ? 's' : ''}</span></summary>
+          <div class="conteudo-secao">
+            <div class="tabela">
+              <div class="linha cabecalho" style="grid-template-columns: 2fr 1.2fr 3fr"><div>Cliente</div><div>Status</div><div>Funções</div></div>
+              ${p.clientes.map(c => `
+                <div class="linha" style="grid-template-columns: 2fr 1.2fr 3fr">
+                  <div><b>${esc(c.cliente)}</b></div>
+                  <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
+                  <div>${esc(c.funcoes.join(', '))}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </details>`).join('') : '<div class="vazio">Nenhuma pessoa encontrada.</div>';
+    }
+
     (async () => {
       await montarSidebar('pessoas.html');
-      const pessoas = await api('/api/pessoas');
-      document.getElementById('lista').innerHTML = pessoas.length ? pessoas.map(p => `
-        <div class="card">
-          <h2>👤 ${esc(p.nome)} <span class="badge ativo_ok" style="margin-left:8px">${p.total} cliente${p.total !== 1 ? 's' : ''}</span></h2>
-          <div class="tabela">
-            <div class="linha cabecalho" style="grid-template-columns: 2fr 1.2fr 3fr"><div>Cliente</div><div>Status</div><div>Funções</div></div>
-            ${p.clientes.map(c => `
-              <div class="linha" style="grid-template-columns: 2fr 1.2fr 3fr">
-                <div><b>${esc(c.cliente)}</b></div>
-                <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
-                <div>${esc(c.funcoes.join(', '))}</div>
-              </div>`).join('')}
-          </div>
-        </div>`).join('') : '<div class="vazio">Nenhum responsável cadastrado ainda.</div>';
+      PESSOAS = await api('/api/pessoas');
+      render();
     })();
   </script>
 </body>

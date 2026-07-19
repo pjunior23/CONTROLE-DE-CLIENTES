@@ -3,16 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Entrar — Controle de Carteira</title>
+  <title>Entrar — Beleza Boost</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <script>document.documentElement.dataset.theme = localStorage.getItem('tema') || 'dark';</script>
 </head>
 <body>
   <div class="login-wrap">
     <form class="login-box" id="form">
-      <h1>🎯 Controle de Carteira</h1>
-      <p>Acesso restrito à equipe da agência</p>
+      <img src="img/beleza-boost.png" alt="Beleza Boost" style="display:block;margin:0 auto 14px;max-width:230px;max-height:90px;object-fit:contain;background:#f5f0e8;border-radius:14px;padding:12px 18px;box-sizing:border-box" onerror="this.outerHTML='<h1>✨ Beleza Boost</h1>'">
+      <p>Controle de Clientes — acesso restrito à equipe</p>
       <label>Login</label>
       <input type="text" id="login" autocomplete="username" required autofocus>
       <label>Senha</label>

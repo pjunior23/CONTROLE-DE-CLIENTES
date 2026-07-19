@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configurações — Controle de Carteira</title>
+  <title>Configurações — Beleza Boost</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -15,24 +15,42 @@
       <div class="titulo-pagina">⚙️ Configurações</div>
       <div class="subtitulo">Equipe e contas de acesso (somente administradores)</div>
 
-      <div class="card">
-        <h2>🧑‍🤝‍🧑 Membros da Equipe</h2>
-        <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
-          Esses nomes aparecem nos dropdowns de responsáveis dos clientes.</p>
-        <form id="formMembro" style="display:flex;gap:10px;margin-bottom:14px">
-          <input id="mNome" placeholder="Nome do membro (ex.: MARCELA)" style="max-width:300px" required>
-          <button class="btn ouro mini" type="submit">➕ Adicionar</button>
-        </form>
-        <div id="listaEquipe" class="tabela"></div>
-      </div>
+      <details class="secao" open>
+        <summary>🎨 Aparência</summary>
+        <div class="conteudo-secao">
+          <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
+            Escolha do tema deste navegador (cada pessoa escolhe o seu; gestores usam o botão 🌓 da barra lateral).</p>
+          <div style="display:flex;gap:10px">
+            <button class="btn mini" onclick="definirTema('dark')">🌙 Tema escuro</button>
+            <button class="btn mini" onclick="definirTema('light')">☀️ Tema claro</button>
+          </div>
+        </div>
+      </details>
 
-      <div class="card">
-        <h2>🔐 Contas de Acesso</h2>
-        <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
-          Admin vê e edita tudo. Gestor vê apenas os clientes onde o membro vinculado aparece (sem editar).</p>
-        <button class="btn rosa mini" onclick="abrirModalUsuario()" style="margin-bottom:14px">➕ Novo Usuário</button>
-        <div id="listaUsuarios" class="tabela"></div>
-      </div>
+      <details class="secao">
+        <summary>🧑‍🤝‍🧑 Membros da Equipe <span class="contador" id="contEquipe">0</span></summary>
+        <div class="conteudo-secao">
+          <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
+            Esses nomes aparecem nos dropdowns de responsáveis dos clientes, filtrados pela função.</p>
+          <form id="formMembro" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <input id="mNome" placeholder="Nome do membro (ex.: Marcela)" style="max-width:260px" required>
+            <select id="mFuncao" style="width:auto;min-width:220px" required><option value="">Função... *</option></select>
+            <button class="btn ouro mini" type="submit">➕ Adicionar</button>
+          </form>
+          <input id="mBusca" placeholder="🔍 Buscar membro..." style="max-width:300px;margin-bottom:12px" oninput="renderEquipe()">
+          <div id="listaEquipe" class="tabela"></div>
+        </div>
+      </details>
+
+      <details class="secao">
+        <summary>🔐 Contas de Acesso <span class="contador" id="contUsuarios">0</span></summary>
+        <div class="conteudo-secao">
+          <p style="font-size:13px;color:var(--texto-suave);margin-bottom:12px">
+            Admin vê e edita tudo. Gestor vê apenas os clientes onde o membro vinculado aparece (sem editar).</p>
+          <button class="btn rosa mini" onclick="abrirModalUsuario()" style="margin-bottom:14px">➕ Novo Usuário</button>
+          <div id="listaUsuarios" class="tabela"></div>
+        </div>
+      </details>
     </main>
   </div>
 
@@ -47,11 +65,8 @@
           <div><label id="rotuloSenha">Senha * (mín. 6)</label><input id="uSenha" type="password" autocomplete="new-password"></div>
         </div>
         <div class="grid-2">
-          <div><label>Papel</label>
-            <select id="uPapel" onchange="toggleMembro()">
-              <option value="gestor">📈 Gestor de Tráfego</option>
-              <option value="admin">👑 Administrador</option>
-            </select>
+          <div><label>Papel / Função</label>
+            <select id="uPapel" onchange="toggleMembro()"></select>
           </div>
           <div id="campoMembro"><label>Membro da equipe vinculado</label><select id="uMembro"></select></div>
         </div>
@@ -67,17 +82,68 @@
 
   <script src="js/app.js"></script>
   <script>
-    let EQUIPE = [], USUARIOS = [], editandoId = null;
+    let EQUIPE = [], USUARIOS = [], FUNCOES = [], editandoId = null;
+
+    function opcoesFuncao(selecionada) {
+      return '<option value="">— sem função —</option>' +
+        FUNCOES.map(f => `<option value="${f.key}" ${f.key === selecionada ? 'selected' : ''}>${esc(f.label)}</option>`).join('');
+    }
+
+    async function mudarFuncao(id, funcao) {
+      try { await api(`/api/equipe/${id}`, { method: 'PUT', body: { funcao } }); }
+      catch (err) { alert(err.message); }
+    }
+
+    // Login sugerido: primeiro nome (minúsculo, sem acento); se ocupado, nome.sobrenome
+    function loginSugerido(nome) {
+      const limpo = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const partes = nome.trim().split(/\s+/).map(limpo).filter(Boolean);
+      if (!partes.length) return '';
+      const primeiro = partes[0];
+      const ocupado = (l) => USUARIOS.some(u => u.login.toLowerCase() === l);
+      if (!ocupado(primeiro)) return primeiro;
+      if (partes.length > 1 && !ocupado(`${primeiro}.${partes[partes.length - 1]}`)) return `${primeiro}.${partes[partes.length - 1]}`;
+      let n = 2;
+      while (ocupado(`${primeiro}${n}`)) n++;
+      return `${primeiro}${n}`;
+    }
+
+    // Cria conta de acesso a partir do membro da equipe
+    function criarAcesso(idMembro) {
+      const m = EQUIPE.find(x => x.id === idMembro);
+      abrirModalUsuario();
+      document.getElementById('uNome').value = m.nome;
+      document.getElementById('uLogin').value = loginSugerido(m.nome);
+      montarSelectPapel(m.funcao && m.funcao !== 'consultor' ? m.funcao : funcoesDeAcesso()[0].key);
+      document.getElementById('uMembro').value = m.nome;
+      toggleMembro();
+    }
+
+    function definirTema(t) { localStorage.setItem('tema', t); aplicarTema(); }
+
+    function renderEquipe() {
+      const busca = (document.getElementById('mBusca').value || '').trim().toLowerCase();
+      const filtrados = EQUIPE.filter(m => !busca || m.nome.toLowerCase().includes(busca));
+      document.getElementById('contEquipe').textContent = EQUIPE.length;
+      document.getElementById('listaEquipe').innerHTML = filtrados.length ? filtrados.map(m => {
+        const temAcesso = USUARIOS.some(u => (u.membroNome || '').toUpperCase() === m.nome.toUpperCase());
+        return `
+        <div class="linha" style="grid-template-columns: 1fr 240px 220px">
+          <div>👤 <b>${esc(m.nome)}</b></div>
+          <div><select onchange="mudarFuncao('${m.id}', this.value)" style="padding:6px 10px;font-size:13px">${opcoesFuncao(m.funcao)}</select></div>
+          <div style="display:flex;gap:8px">
+            ${temAcesso ? '<span class="badge gestor" style="align-self:center">🔑 Tem acesso</span>' : `<button class="btn mini" onclick="criarAcesso('${m.id}')">🔑 Criar acesso</button>`}
+            <button class="btn perigo mini" onclick="removerMembro('${m.id}', '${esc(m.nome)}')">Remover</button>
+          </div>
+        </div>`;
+      }).join('') : '<div class="vazio">Nenhum membro encontrado.</div>';
+    }
 
     async function carregar() {
       [EQUIPE, USUARIOS] = await Promise.all([api('/api/equipe'), api('/api/usuarios')]);
       EQUIPE.sort((a, b) => a.nome.localeCompare(b.nome));
-
-      document.getElementById('listaEquipe').innerHTML = EQUIPE.length ? EQUIPE.map(m => `
-        <div class="linha" style="grid-template-columns: 1fr 100px">
-          <div>👤 <b>${esc(m.nome)}</b></div>
-          <div><button class="btn perigo mini" onclick="removerMembro('${m.id}', '${esc(m.nome)}')">Remover</button></div>
-        </div>`).join('') : '<div class="vazio">Nenhum membro cadastrado.</div>';
+      renderEquipe();
+      document.getElementById('contUsuarios').textContent = USUARIOS.length;
 
       document.getElementById('listaUsuarios').innerHTML = [
         `<div class="linha cabecalho" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 90px"><div>Nome</div><div>Login</div><div>Papel</div><div>Membro</div><div></div></div>`,
@@ -85,7 +151,7 @@
           <div class="linha" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 90px">
             <div><b>${esc(u.nome)}</b></div>
             <div>${esc(u.login)}</div>
-            <div><span class="badge ${u.papel}">${u.papel === 'admin' ? '👑 Admin' : '📈 Gestor'}</span></div>
+            <div><span class="badge ${u.papel}">${u.papel === 'admin' ? '👑 Admin' : '👤 ' + esc((FUNCOES.find(f => f.key === u.funcao) || {}).label || 'Equipe')}</span></div>
             <div>${esc(u.membroNome || '—')}</div>
             <div><button class="btn mini" onclick="abrirModalUsuario('${u.id}')">✏️ Editar</button></div>
           </div>`),
@@ -95,8 +161,12 @@
     document.getElementById('formMembro').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
-        await api('/api/equipe', { method: 'POST', body: { nome: document.getElementById('mNome').value } });
+        await api('/api/equipe', { method: 'POST', body: {
+          nome: document.getElementById('mNome').value,
+          funcao: document.getElementById('mFuncao').value || null,
+        } });
         document.getElementById('mNome').value = '';
+        document.getElementById('mFuncao').value = '';
         await carregar();
       } catch (err) { alert(err.message); }
     });
@@ -107,9 +177,19 @@
       catch (err) { alert(err.message); }
     }
 
+    // Papel do usuário: Administrador ou uma das funções da equipe (menos Consultor/Gerente)
+    function funcoesDeAcesso() { return FUNCOES.filter(f => f.key !== 'consultor'); }
+
+    function montarSelectPapel(valor) {
+      document.getElementById('uPapel').innerHTML =
+        '<option value="admin">👑 Administrador</option>' +
+        funcoesDeAcesso().map(f => `<option value="${f.key}" ${f.key === valor ? 'selected' : ''}>👤 ${esc(f.label)}</option>`).join('');
+      if (valor === 'admin') document.getElementById('uPapel').value = 'admin';
+    }
+
     function toggleMembro() {
       document.getElementById('campoMembro').style.display =
-        document.getElementById('uPapel').value === 'gestor' ? 'block' : 'none';
+        document.getElementById('uPapel').value !== 'admin' ? 'block' : 'none';
     }
 
     function abrirModalUsuario(id) {
@@ -121,7 +201,7 @@
       document.getElementById('uLogin').disabled = !!u;
       document.getElementById('uSenha').value = '';
       document.getElementById('rotuloSenha').textContent = u ? 'Nova senha (vazio = manter)' : 'Senha * (mín. 6)';
-      document.getElementById('uPapel').value = u?.papel || 'gestor';
+      montarSelectPapel(u ? (u.papel === 'admin' ? 'admin' : (u.funcao || funcoesDeAcesso()[0].key)) : funcoesDeAcesso()[0].key);
       document.getElementById('uMembro').innerHTML = '<option value="">— nenhum —</option>' +
         EQUIPE.map(m => `<option value="${esc(m.nome)}" ${u?.membroNome === m.nome ? 'selected' : ''}>${esc(m.nome)}</option>`).join('');
       toggleMembro();
@@ -141,9 +221,11 @@
 
     document.getElementById('formUsuario').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const papelSel = document.getElementById('uPapel').value;
       const corpo = {
         nome: document.getElementById('uNome').value,
-        papel: document.getElementById('uPapel').value,
+        papel: papelSel === 'admin' ? 'admin' : 'gestor',
+        funcao: papelSel === 'admin' ? null : papelSel,
         membroNome: document.getElementById('uMembro').value || null,
       };
       const senha = document.getElementById('uSenha').value;
@@ -160,9 +242,17 @@
       } catch (err) { document.getElementById('modalErro').textContent = err.message; }
     });
 
+    document.getElementById('modalFundo').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) fecharModal();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharModal(); });
+
     (async () => {
       const user = await montarSidebar('configuracoes.html');
       if (user.papel !== 'admin') { window.location.href = '/dashboard.html'; return; }
+      FUNCOES = (await api('/api/meta')).funcoes;
+      document.getElementById('mFuncao').innerHTML = '<option value="">Função...</option>' +
+        FUNCOES.map(f => `<option value="${f.key}">${esc(f.label)}</option>`).join('');
       await carregar();
     })();
   </script>

@@ -1,4 +1,4 @@
-# 🚀 Guia de Deploy e Operação — Controle de Carteira
+# 🚀 Guia de Deploy e Operação — Controle de Clientes
 
 Passo a passo para colocar o app no ar no Railway com auto-deploy via GitHub, no mesmo padrão do app de informes.
 
@@ -10,7 +10,7 @@ No PowerShell 5.1, **um comando por linha** (nunca use `&&`):
 cd controle-carteira
 git init
 git add .
-git commit -m "Versao inicial do Controle de Carteira"
+git commit -m "Versao inicial do Controle de Clientes"
 ```
 
 Crie um **repositório privado** no GitHub (ex.: `controle-carteira`) e conecte:

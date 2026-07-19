@@ -1,10 +1,31 @@
 // ============ Utilidades compartilhadas ============
+const FUNCAO_LABEL = {
+  atendimento: 'Estrategista de Atendimento',
+  planejamento: 'Estrategista de Planejamento',
+  copy: 'Copywriter',
+  apoio: 'Apoio',
+  consultor: 'Consultor/Gerente',
+  socialMedia: 'Social Media',
+  edicaoVideos: 'Edição de Vídeos',
+};
+
 const STATUS_LABEL = {
-  ativo: '🟣 Ativo',
+  ativo: '🟢 Ativo',
   ativo_ok: '🟢 Ativo OK',
-  prelancamento: '🟡 Pré-lançamento',
+  prelancamento: '🟡 Em Inauguração',
   saindo: '🔴 Saindo',
 };
+
+// Tema claro/escuro (escolha de cada usuário, salva no navegador)
+function aplicarTema() {
+  document.documentElement.dataset.theme = localStorage.getItem('tema') || 'dark';
+}
+function alternarTema() {
+  const novo = (localStorage.getItem('tema') || 'dark') === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('tema', novo);
+  aplicarTema();
+}
+aplicarTema();
 
 async function api(caminho, opcoes = {}) {
   const r = await fetch(caminho, {
@@ -28,6 +49,44 @@ function fmtData(iso) {
   return `${d}/${m}/${a}`;
 }
 
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Cliente que já saiu: data de saída no passado → vai para o histórico
+function clienteSaiu(c) {
+  return !!(c.dataSaida && c.dataSaida < hojeISO());
+}
+
+// Status efetivo, calculado pelas datas:
+// saída no passado → Saiu | status Saindo → Saindo
+// inauguração no futuro → Em Inauguração (automático) | senão → status salvo
+function statusEfetivo(c) {
+  if (clienteSaiu(c)) return 'saiu';
+  if (c.dataSaida) return 'saindo';           // data de saída marcada (futura) → Saindo automático
+  if (c.status === 'saindo') return 'saindo'; // saindo sem data definida
+  if (c.dataInauguracao && c.dataInauguracao > hojeISO()) return 'prelancamento';
+  if (c.status === 'prelancamento') return 'ativo'; // data já passou: virou ativo sozinho
+  return c.status;
+}
+
+// Logo da marca (fallback 1: logo pelo nome do cliente; fallback 2: avatar com inicial)
+function slugMarca(m) {
+  return String(m || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+}
+function logoMarcaHtml(c) {
+  const ini = esc((c.nome || '?').trim().charAt(0).toUpperCase());
+  const sMarca = slugMarca(c.marca);
+  const sNome = slugMarca(c.nome);
+  const primeiro = sMarca || sNome;
+  if (!primeiro) return `<div class="avatar">${ini}</div>`;
+  const alt = sMarca && sNome && sMarca !== sNome ? sNome : '';
+  return `<img class="logo-marca" src="img/marcas/${primeiro}.png" alt="" data-alt="${alt}"
+    onerror="if(this.dataset.alt && !this.dataset.tentou){this.dataset.tentou=1;this.src='img/marcas/'+this.dataset.alt+'.png'}else{this.outerHTML='<div class=&quot;avatar&quot;>${ini}</div>'}">`;
+}
+
 // Sidebar comum a todas as páginas internas
 async function montarSidebar(paginaAtiva) {
   const user = await api('/api/me');
@@ -39,15 +98,15 @@ async function montarSidebar(paginaAtiva) {
   ];
   if (user.papel === 'admin') itens.push({ href: 'configuracoes.html', rotulo: '⚙️ Configurações' });
   document.getElementById('sidebar').innerHTML = `
-    <div class="logo">🎯 Controle de Carteira</div>
+    <div class="logo"><img src="img/beleza-boost.png" class="logo-bb" alt="Beleza Boost" onerror="this.outerHTML='<div class=&quot;marca&quot;>✨ Beleza Boost</div>'"><div class="app">Controle de Clientes</div></div>
     <nav class="menu">
       ${itens.map(i => `<a href="${i.href}" class="${i.href === paginaAtiva ? 'ativo' : ''}">${i.rotulo}</a>`).join('')}
     </nav>
     <div class="user-card">
       <div class="nome">${esc(user.nome)}</div>
-      <div class="papel">${user.papel === 'admin' ? '👑 Administrador' : '📈 Gestor de Tráfego'}</div>
+      <div class="papel">${user.papel === 'admin' ? '👑 Administrador' : '👤 ' + esc(FUNCAO_LABEL[user.funcao] || 'Equipe')}</div>
       <div class="acoes">
-        ${user.papel === 'admin' ? '<a href="configuracoes.html">⚙️ Config</a>' : ''}
+        <button onclick="alternarTema()" title="Alternar tema claro/escuro">🌓 Tema</button>
         <button onclick="sair()">🚪 Sair</button>
       </div>
     </div>`;

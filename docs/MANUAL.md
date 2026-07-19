@@ -1,6 +1,6 @@
-# 📖 Manual do Usuário — Controle de Carteira
+# 📖 Manual do Usuário — Controle de Clientes
 
-Este é o guia da equipe para usar o Controle de Carteira, o sistema que substitui a planilha "Clientes e Responsáveis". Aqui você aprende a entrar, consultar seus clientes, entender os alertas e (se for administrador) manter tudo atualizado.
+Este é o guia da equipe para usar o Controle de Clientes, o sistema que substitui a planilha "Clientes e Responsáveis". Aqui você aprende a entrar, consultar seus clientes, entender os alertas e (se for administrador) manter tudo atualizado.
 
 ## Entrando no sistema
 
@@ -16,7 +16,7 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 ## 📊 Dashboard
 
-É a primeira tela após o login. Mostra os números da carteira (total de clientes, ativos, pré-lançamento e saindo) e a lista de **alertas**:
+É a primeira tela após o login. Mostra os números da carteira (total de clientes, ativos, em inauguração e saindo) e a lista de **alertas**:
 
 🎉 **Inaugurações próximas** — clientes em pré-lançamento com inauguração nos próximos 15 dias. 🎂 **Aniversários de unidade** — unidades que fazem aniversário nos próximos 30 dias, para planejar campanha comemorativa. 👋 **Clientes saindo** — quem está de saída e a data, para organizar a transição. ⚠️ **Pendências** — clientes com alguma função sem responsável definido (inclui os que estavam "A confirmar" na planilha) ou sem acesso de tráfego liberado. A meta é manter essa lista zerada.
 
@@ -24,7 +24,7 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 A versão digital da planilha. Cada linha mostra o cliente, o status, os principais responsáveis e se o acesso de tráfego está liberado.
 
-**Status possíveis**: 🟣 Ativo (operação normal) · 🟢 Ativo OK (ativo e com tudo em dia) · 🟡 Pré-lançamento (inauguração a caminho) · 🔴 Saindo (encerrando contrato).
+**Status possíveis**: 🟣 Ativo (operação normal) · 🟢 Ativo OK (ativo e com tudo em dia) · 🟡 Em Inauguração (inauguração a caminho) · 🔴 Saindo (encerrando contrato).
 
 **Buscar e filtrar**: use a caixa 🔍 para buscar pelo nome, o filtro de status, o filtro por marca (Fast Escova, Fast Spa, Mega Studio...) e o filtro por pessoa (ex.: escolha "Marcela" para ver só os clientes dela).
 
@@ -51,3 +51,18 @@ Mostra a carteira de cada membro da equipe: quantos clientes atende e em quais f
 **Fui desconectado do nada.** O sistema foi atualizado. Entre de novo com o mesmo login e senha.
 
 **Posso usar no celular?** Sim, pelo navegador. A experiência é melhor no computador.
+
+
+## Novidades da versão 2
+
+**Histórico de saídas**: cliente com status Saindo continua contando como ativo. Quando a data de saída passa, ele sai da lista automaticamente e vai para o filtro "📁 Histórico (saíram)" — nada é excluído, então dá para consultar quem já saiu (e quem pedir para voltar).
+
+**Cards clicáveis**: no Dashboard, clicar em qualquer card (Ativos, Em Inauguração, Saindo, Histórico) abre a lista de clientes já filtrada.
+
+**Alertas organizados**: os alertas ficam em seções recolhíveis (Inaugurações, Aniversários, Saindo, Pendências), cada uma com contador.
+
+**Tema claro/escuro**: botão 🌓 Tema na sidebar; a escolha fica salva no seu navegador.
+
+**Responsáveis por função**: no cadastro do cliente, cada dropdown mostra apenas os colaboradores daquela função (definida em Configurações). Consultor tem a opção "NÃO TEM" para clientes sem consultor — sem gerar pendência.
+
+**Acesso a partir do colaborador**: em Configurações, o botão 🔑 Criar acesso gera a conta do membro com login sugerido pelo primeiro nome (ex.: Juliana → juliana).

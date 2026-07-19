@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Clientes — Controle de Carteira</title>
+  <title>Clientes — Beleza Boost</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -24,10 +24,11 @@
         <input type="text" id="fBusca" placeholder="🔍 Buscar cliente...">
         <select id="fStatus">
           <option value="">Todos os status</option>
-          <option value="ativo">🟣 Ativo</option>
+          <option value="ativo">🟢 Ativo</option>
           <option value="ativo_ok">🟢 Ativo OK</option>
-          <option value="prelancamento">🟡 Pré-lançamento</option>
+          <option value="prelancamento">🟡 Em Inauguração</option>
           <option value="saindo">🔴 Saindo</option>
+          <option value="saiu">📁 Histórico (saíram)</option>
         </select>
         <select id="fMarca"><option value="">Todas as marcas</option></select>
         <select id="fPessoa"><option value="">Todas as pessoas</option></select>
@@ -47,25 +48,31 @@
           <div><label>Marca / Rede</label><input id="cMarca" list="marcas" placeholder="Ex.: Fast Escova"><datalist id="marcas"></datalist></div>
         </div>
         <div class="grid-2">
-          <div><label>Status</label>
+          <div><label>Status <small style="color:var(--texto-suave)">(Em Inauguração é automático pela data)</small></label>
             <select id="cStatus">
-              <option value="ativo">🟣 Ativo</option>
+              <option value="ativo">🟢 Ativo</option>
               <option value="ativo_ok">🟢 Ativo OK</option>
-              <option value="prelancamento">🟡 Pré-lançamento</option>
-              <option value="saindo">🔴 Saindo</option>
+              <option value="saindo">🔴 Saindo (sem data definida)</option>
             </select>
           </div>
+          <div><label>📅 Data de saída <small style="color:var(--texto-suave)">(passou a data → vai pro histórico)</small></label><input type="date" id="cSaida"></div>
         </div>
         <div class="grid-2" id="camposFuncoes"></div>
         <div class="grid-2">
-          <div><label>📅 Data de inauguração</label><input type="date" id="cInauguracao"></div>
-          <div><label>📅 Data de saída</label><input type="date" id="cSaida"></div>
+          <div><label>📅 Data de inauguração <small style="color:var(--texto-suave)">(futura → Em Inauguração)</small></label><input type="date" id="cInauguracao"></div>
+          <div><label>🎂 Aniversário da unidade (dia/mês)</label>
+            <div style="display:flex;gap:8px">
+              <select id="cAnivDia" style="flex:1"><option value="">Dia</option></select>
+              <select id="cAnivMes" style="flex:2"><option value="">Mês</option></select>
+            </div>
+          </div>
         </div>
         <div class="grid-2">
-          <div><label>🎂 Aniversário da unidade</label><input type="date" id="cAniversario"></div>
           <div><label>📅 Entrada na carteira</label><input type="date" id="cEntrada"></div>
+          <div><label>Acesso do Tráfego</label>
+            <select id="cAcesso"><option value="sim">✅ Sim</option><option value="nao">❌ Não</option></select>
+          </div>
         </div>
-        <div class="check"><input type="checkbox" id="cAcesso"><label style="margin:0">✅ Acesso de tráfego liberado</label></div>
         <label>📝 Observações</label>
         <textarea id="cObs" rows="2"></textarea>
         <div class="erro" id="modalErro"></div>
@@ -82,17 +89,24 @@
   <script>
     let CLIENTES = [], FUNCOES = [], EQUIPE = [], editandoId = null;
 
-    const grade = 'grid-template-columns: 2fr 1fr 1.2fr 1.2fr 1.2fr 90px';
+    const grade = 'grid-template-columns: 2.2fr 1fr 1.1fr 1.1fr 1.1fr 1.1fr';
 
-    function opcoesEquipe(selecionado) {
-      const nomes = EQUIPE.map(m => m.nome);
-      if (selecionado && !nomes.some(n => n.toUpperCase() === selecionado.toUpperCase()) && selecionado.toUpperCase() !== 'EQUIPE PRÓPRIA') {
-        nomes.push(selecionado);
+    // Dropdown de responsáveis filtrado pela função do colaborador
+    function opcoesEquipe(funcaoKey, selecionado) {
+      const nomes = EQUIPE.filter(m => m.funcao === funcaoKey).map(m => m.nome);
+      const sel = (selecionado || '').trim();
+      if (sel && !nomes.some(n => n.toUpperCase() === sel.toUpperCase()) &&
+          !['EQUIPE PRÓPRIA', 'NÃO TEM'].includes(sel.toUpperCase())) {
+        nomes.push(sel); // mantém valor atual mesmo que a pessoa tenha outra função
+      }
+      const especiais = [`<option value="EQUIPE PRÓPRIA" ${sel === 'EQUIPE PRÓPRIA' ? 'selected' : ''}>EQUIPE PRÓPRIA</option>`];
+      if (funcaoKey === 'consultor') {
+        especiais.push(`<option value="NÃO TEM" ${sel === 'NÃO TEM' ? 'selected' : ''}>NÃO TEM</option>`);
       }
       return ['<option value="">—</option>',
-        ...nomes.sort((a,b) => a.localeCompare(b)).map(n =>
-          `<option value="${esc(n)}" ${selecionado && n.toUpperCase() === selecionado.toUpperCase() ? 'selected' : ''}>${esc(n)}</option>`),
-        `<option value="EQUIPE PRÓPRIA" ${selecionado === 'EQUIPE PRÓPRIA' ? 'selected' : ''}>EQUIPE PRÓPRIA</option>`,
+        ...nomes.sort((a, b) => a.localeCompare(b)).map(n =>
+          `<option value="${esc(n)}" ${sel && n.toUpperCase() === sel.toUpperCase() ? 'selected' : ''}>${esc(n)}</option>`),
+        ...especiais,
       ].join('');
     }
 
@@ -102,25 +116,44 @@
       const marca = document.getElementById('fMarca').value;
       const pessoa = document.getElementById('fPessoa').value.toUpperCase();
       const filtrados = CLIENTES.filter(c => {
+        const stEf = statusEfetivo(c);
+        if (st === 'saiu') { if (stEf !== 'saiu') return false; }
+        else {
+          if (stEf === 'saiu') return false; // quem saiu só aparece no histórico
+          if (st && st !== 'ativos' && stEf !== st) return false; // 'ativos' = toda a carteira
+        }
         if (busca && !c.nome.toLowerCase().includes(busca)) return false;
-        if (st && c.status !== st) return false;
         if (marca && (c.marca || '') !== marca) return false;
-        if (pessoa && !FUNCOES.some(f => (c.responsaveis[f.key] || '').toUpperCase() === pessoa)) return false;
+        if (pessoa) {
+          const [fk, nome] = pessoa.includes('|') ? pessoa.split('|') : [null, pessoa];
+          const bate = (v) => (v || '').toUpperCase().split('/').map(s => s.trim()).includes(nome);
+          if (fk) { if (!bate(c.responsaveis[fk.toLowerCase()])) return false; }
+          else if (!FUNCOES.some(f => bate(c.responsaveis[f.key]))) return false;
+        }
         return true;
       });
-      document.getElementById('contagem').textContent = `${filtrados.length} de ${CLIENTES.length} clientes`;
+      const total = CLIENTES.filter(c => statusEfetivo(c) !== 'saiu').length;
+      document.getElementById('contagem').textContent = st === 'saiu'
+        ? `${filtrados.length} clientes no histórico`
+        : `${filtrados.length} de ${total} clientes`;
       const podeEditar = window.USUARIO.papel === 'admin';
       document.getElementById('tabela').innerHTML = [
-        `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Acesso</div></div>`,
-        ...filtrados.map(c => `
+        `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Consultor</div></div>`,
+        ...filtrados.map(c => {
+          const stEf = statusEfetivo(c);
+          const badge = stEf === 'saiu'
+            ? `<span class="badge saiu">📁 Saiu em ${fmtData(c.dataSaida)}</span>`
+            : `<span class="badge ${stEf}">${STATUS_LABEL[stEf]}</span>`;
+          return `
           <div class="linha ${podeEditar ? 'clicavel' : ''}" style="${grade}" ${podeEditar ? `onclick="abrirModal('${c.id}')"` : ''}>
-            <div><b>${esc(c.nome)}</b>${c.obs ? `<br><small style="color:var(--texto-suave)">${esc(c.obs)}</small>` : ''}</div>
-            <div><span class="badge ${c.status}">${STATUS_LABEL[c.status]}</span></div>
+            <div style="display:flex;align-items:center;gap:10px">${logoMarcaHtml(c)}<div><b>${esc(c.nome)}</b>${c.obs ? `<br><small style="color:var(--texto-suave)">${esc(c.obs)}</small>` : ''}</div></div>
+            <div>${badge}</div>
             <div>${esc(c.responsaveis.atendimento || '—')}</div>
             <div>${esc(c.responsaveis.planejamento || '—')}</div>
             <div>${esc(c.responsaveis.copy || '—')}</div>
-            <div><span class="badge ${c.acessoTrafego ? 'sim' : 'nao'}">${c.acessoTrafego ? 'SIM' : 'NÃO'}</span></div>
-          </div>`),
+            <div>${esc(c.responsaveis.consultor || '—')}</div>
+          </div>`;
+        }),
       ].join('') || '<div class="vazio">Nenhum cliente encontrado.</div>';
     }
 
@@ -131,15 +164,21 @@
       document.getElementById('cNome').value = c?.nome || '';
       document.getElementById('cMarca').value = c?.marca || '';
       document.getElementById('marcas').innerHTML = [...new Set(CLIENTES.map(x => x.marca).filter(Boolean))].sort().map(m => `<option value="${esc(m)}">`).join('');
-      document.getElementById('cStatus').value = c?.status || 'ativo';
+      document.getElementById('cStatus').value = (c?.status === 'prelancamento' ? 'ativo' : c?.status) || 'ativo';
       document.getElementById('cInauguracao').value = c?.dataInauguracao || '';
       document.getElementById('cSaida').value = c?.dataSaida || '';
-      document.getElementById('cAniversario').value = c?.aniversario || '';
+      // Aniversário: só dia e mês (o ano guardado é simbólico)
+      const [, anivM, anivD] = (c?.aniversario || '').split('-');
+      document.getElementById('cAnivDia').innerHTML = '<option value="">Dia</option>' +
+        Array.from({ length: 31 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${anivD == String(i + 1).padStart(2, '0') ? 'selected' : ''}>${i + 1}</option>`).join('');
+      const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      document.getElementById('cAnivMes').innerHTML = '<option value="">Mês</option>' +
+        MESES.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${anivM == String(i + 1).padStart(2, '0') ? 'selected' : ''}>${m}</option>`).join('');
       document.getElementById('cEntrada').value = c?.dataEntrada || '';
-      document.getElementById('cAcesso').checked = !!c?.acessoTrafego;
+      document.getElementById('cAcesso').value = c?.acessoTrafego ? 'sim' : 'nao';
       document.getElementById('cObs').value = c?.obs || '';
       document.getElementById('camposFuncoes').innerHTML = FUNCOES.map(f => `
-        <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(c?.responsaveis?.[f.key] || '')}</select></div>`).join('');
+        <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(f.key, c?.responsaveis?.[f.key] || '')}</select></div>`).join('');
       document.getElementById('btnExcluir').style.display = c ? 'inline-block' : 'none';
       document.getElementById('modalErro').textContent = '';
       document.getElementById('modalFundo').classList.add('aberto');
@@ -149,7 +188,7 @@
 
     async function excluirCliente() {
       const c = CLIENTES.find(x => x.id === editandoId);
-      if (!confirm(`Excluir o cliente "${c.nome}"? Essa ação não pode ser desfeita.`)) return;
+      if (!confirm(`Excluir o cliente "${c.nome}"? Essa ação não pode ser desfeita.\n\nDica: para manter histórico, prefira marcar a data de saída em vez de excluir.`)) return;
       try {
         await api(`/api/clientes/${editandoId}`, { method: 'DELETE' });
         fecharModal(); await carregar();
@@ -165,10 +204,12 @@
         marca: document.getElementById('cMarca').value,
         status: document.getElementById('cStatus').value,
         responsaveis,
-        acessoTrafego: document.getElementById('cAcesso').checked,
+        acessoTrafego: document.getElementById('cAcesso').value === 'sim',
         dataInauguracao: document.getElementById('cInauguracao').value || null,
         dataSaida: document.getElementById('cSaida').value || null,
-        aniversario: document.getElementById('cAniversario').value || null,
+        aniversario: (document.getElementById('cAnivDia').value && document.getElementById('cAnivMes').value)
+          ? `2000-${document.getElementById('cAnivMes').value}-${document.getElementById('cAnivDia').value}`
+          : null,
         dataEntrada: document.getElementById('cEntrada').value || null,
         obs: document.getElementById('cObs').value,
       };
@@ -182,15 +223,27 @@
     async function carregar() {
       [CLIENTES, EQUIPE] = await Promise.all([api('/api/clientes'), api('/api/equipe')]);
       CLIENTES.sort((a, b) => a.nome.localeCompare(b.nome));
-      const pessoas = new Set();
+
+      // Dropdown de pessoas agrupado por função (nomes compostos separados)
+      const porFuncao = {};
+      FUNCOES.forEach(f => porFuncao[f.key] = new Set());
       CLIENTES.forEach(c => FUNCOES.forEach(f => {
-        const n = (c.responsaveis[f.key] || '').trim();
-        if (n && n.toUpperCase() !== 'EQUIPE PRÓPRIA') pessoas.add(n);
+        const bruto = (c.responsaveis[f.key] || '').trim();
+        const up = bruto.toUpperCase();
+        if (!bruto || up === 'EQUIPE PRÓPRIA' || up === 'NÃO TEM') return;
+        bruto.split('/').map(s => s.trim()).filter(Boolean).forEach(n => porFuncao[f.key].add(n));
       }));
       const sel = document.getElementById('fPessoa');
       const atual = sel.value;
       sel.innerHTML = '<option value="">Todas as pessoas</option>' +
-        [...pessoas].sort((a,b) => a.localeCompare(b)).map(p => `<option ${p === atual ? 'selected' : ''}>${esc(p)}</option>`).join('');
+        FUNCOES.map(f => {
+          const nomes = [...porFuncao[f.key]].sort((a, b) => a.localeCompare(b));
+          if (!nomes.length) return '';
+          return `<optgroup label="${esc(f.label)}">` +
+            nomes.map(n => { const v = `${f.key}|${n.toUpperCase()}`; return `<option value="${esc(v)}" ${v === atual ? 'selected' : ''}>${esc(n)}</option>`; }).join('') +
+            '</optgroup>';
+        }).join('');
+
       const selM = document.getElementById('fMarca');
       const atualM = selM.value;
       selM.innerHTML = '<option value="">Todas as marcas</option>' +
@@ -198,10 +251,27 @@
       render();
     }
 
+    // Inauguração escolhida → aniversário (dia/mês) preenche sozinho
+    document.getElementById('cInauguracao').addEventListener('change', function () {
+      if (!this.value) return;
+      const [, m, d] = this.value.split('-');
+      document.getElementById('cAnivDia').value = d;
+      document.getElementById('cAnivMes').value = m;
+    });
+
+    // Fechar modal com Esc ou clicando fora
+    document.getElementById('modalFundo').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) fecharModal();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharModal(); });
+
     (async () => {
       const user = await montarSidebar('clientes.html');
       if (user.papel === 'admin') document.getElementById('btnNovo').style.display = 'inline-block';
       FUNCOES = (await api('/api/meta')).funcoes;
+      // Filtro vindo dos cards do dashboard (?status=...)
+      const param = new URLSearchParams(location.search).get('status');
+      if (param) document.getElementById('fStatus').value = param;
       ['fBusca', 'fStatus', 'fMarca', 'fPessoa'].forEach(id => document.getElementById(id).addEventListener('input', render));
       await carregar();
     })();

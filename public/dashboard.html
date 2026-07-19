@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard — Controle de Carteira</title>
+  <title>Dashboard — Beleza Boost</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -17,45 +17,57 @@
 
       <div class="metricas" id="metricas"></div>
 
-      <div class="card">
-        <h2>🚨 Alertas</h2>
-        <div id="alertas"><div class="vazio">Carregando...</div></div>
-      </div>
+      <h2 style="font-size:16px;margin:4px 0 12px">🚨 Alertas</h2>
+      <div id="alertas"><div class="vazio">Carregando...</div></div>
     </main>
   </div>
 
   <script src="js/app.js"></script>
   <script>
+    function ir(status) {
+      window.location.href = 'clientes.html' + (status ? `?status=${status}` : '');
+    }
+
+    function secao(emoji, titulo, cor, itens, renderItem, abrir) {
+      if (!itens.length) return '';
+      return `
+        <details class="secao" ${abrir ? 'open' : ''}>
+          <summary>${emoji} ${titulo} <span class="contador">${itens.length}</span></summary>
+          <div class="conteudo-secao">${itens.map(renderItem).join('')}</div>
+        </details>`;
+    }
+
     (async () => {
       const user = await montarSidebar('dashboard.html');
       document.getElementById('saudacao').textContent =
         user.papel === 'admin' ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
 
       const [clientes, alertas] = await Promise.all([api('/api/clientes'), api('/api/alertas')]);
-
-      const cont = (s) => clientes.filter(c => c.status === s).length;
-      document.getElementById('metricas').innerHTML = `
-        <div class="metrica destaque"><div class="valor">${clientes.length}</div><div class="rotulo">👥 Total de clientes</div></div>
-        <div class="metrica"><div class="valor">${cont('ativo') + cont('ativo_ok')}</div><div class="rotulo">🟢 Ativos</div></div>
-        <div class="metrica"><div class="valor">${cont('prelancamento')}</div><div class="rotulo">🟡 Pré-lançamento</div></div>
-        <div class="metrica"><div class="valor">${cont('saindo')}</div><div class="rotulo">🔴 Saindo</div></div>`;
-
-      const blocos = [];
       ['inauguracoes', 'aniversarios', 'saidas', 'pendencias'].forEach(k => { if (!alertas[k]) alertas[k] = []; });
-      for (const a of alertas.inauguracoes) {
-        blocos.push(`<div class="alerta amarelo">🎉 <div><b>${esc(a.cliente)}</b> — inauguração em <b>${fmtData(a.data)}</b></div></div>`);
-      }
-      for (const a of alertas.aniversarios) {
-        blocos.push(`<div class="alerta amarelo">🎂 <div><b>${esc(a.cliente)}</b> — aniversário da unidade em <b>${fmtData(a.data)}</b> (${a.emDias === 0 ? 'hoje!' : 'em ' + a.emDias + ' dia' + (a.emDias !== 1 ? 's' : '')})</div></div>`);
-      }
-      for (const a of alertas.saidas) {
-        blocos.push(`<div class="alerta vermelho">👋 <div><b>${esc(a.cliente)}</b> — saindo${a.data ? ' em <b>' + fmtData(a.data) + '</b>' : ' (sem data definida)'}</div></div>`);
-      }
-      for (const a of alertas.pendencias) {
-        blocos.push(`<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b> — pendências:<small>${esc(a.faltando.join(', '))}</small></div></div>`);
-      }
+
+      const naCarteira = clientes.filter(c => statusEfetivo(c) !== 'saiu');
+      const historico = clientes.length - naCarteira.length;
+      const cont = (s) => naCarteira.filter(c => statusEfetivo(c) === s).length;
+      // Ativo = todo mundo na carteira (inclui Em Inauguração e Saindo);
+      // só deixa de ser ativo quando a data de saída passa (Histórico)
+      const ativos = naCarteira.length;
+
+      document.getElementById('metricas').innerHTML = `
+        <div class="metrica destaque link" onclick="ir('')"><div class="valor">${ativos}</div><div class="rotulo">🟢 Clientes Ativos</div></div>
+        <div class="metrica link" onclick="ir('prelancamento')"><div class="valor">${cont('prelancamento')}</div><div class="rotulo">🟡 Em Inauguração</div></div>
+        <div class="metrica link" onclick="ir('saindo')"><div class="valor">${cont('saindo')}</div><div class="rotulo">🔴 Saindo</div></div>
+        <div class="metrica link" onclick="ir('saiu')"><div class="valor">${historico}</div><div class="rotulo">📁 Histórico</div></div>`;
+
+      const html =
+        secao('🎉', 'Inaugurações próximas', 'amarelo', alertas.inauguracoes, a =>
+          `<div class="alerta amarelo">🎉 <div><b>${esc(a.cliente)}</b> — inauguração em <b>${fmtData(a.data)}</b></div></div>`, true) +
+        secao('🎂', 'Aniversários de unidade', 'amarelo', alertas.aniversarios, a =>
+          `<div class="alerta amarelo">🎂 <div><b>${esc(a.cliente)}</b> — <b>${fmtData(a.data)}</b> (${a.emDias === 0 ? 'hoje!' : 'em ' + a.emDias + ' dia' + (a.emDias !== 1 ? 's' : '')})</div></div>`, false) +
+        secao('⚠️', 'Pendências', 'azul', alertas.pendencias, a =>
+          `<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b><small>${esc(a.faltando.join(', '))}</small></div></div>`, false);
+
       document.getElementById('alertas').innerHTML =
-        blocos.length ? blocos.join('') : '<div class="vazio">✅ Nenhum alerta no momento. Tudo em ordem!</div>';
+        html || '<div class="vazio">✅ Nenhum alerta no momento. Tudo em ordem!</div>';
     })();
   </script>
 </body>

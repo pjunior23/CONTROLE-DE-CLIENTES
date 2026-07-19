@@ -1,5 +1,5 @@
 {
-  "name": "controle-carteira",
+  "name": "controle-clientes",
   "version": "1.0.0",
   "description": "Controle de clientes da carteira — agência de tráfego pago",
   "main": "server.js",
