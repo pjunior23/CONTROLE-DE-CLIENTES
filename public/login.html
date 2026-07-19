@@ -17,7 +17,10 @@
       <label>Login</label>
       <input type="text" id="login" autocomplete="username" required autofocus>
       <label>Senha</label>
-      <input type="password" id="senha" autocomplete="current-password" required>
+      <div style="position:relative">
+        <input type="password" id="senha" autocomplete="current-password" required style="width:100%;box-sizing:border-box;padding-right:40px">
+        <button type="button" onclick="const c=document.getElementById('senha');const v=c.type==='password';c.type=v?'text':'password';this.textContent=v?'🙈':'👁️'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;line-height:1">👁️</button>
+      </div>
       <div class="erro" id="erro"></div>
       <button class="btn ouro" style="width:100%;margin-top:8px" type="submit">🔑 Entrar</button>
     </form>

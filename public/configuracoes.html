@@ -62,7 +62,12 @@
         <label>Nome completo *</label><input id="uNome" required>
         <div class="grid-2">
           <div><label>Login *</label><input id="uLogin" autocomplete="off"></div>
-          <div><label id="rotuloSenha">Senha * (mín. 6)</label><input id="uSenha" type="password" autocomplete="new-password"></div>
+          <div><label id="rotuloSenha">Senha * (mín. 6)</label>
+            <div style="position:relative">
+              <input id="uSenha" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;padding-right:36px">
+              <button type="button" onclick="const c=document.getElementById('uSenha');const v=c.type==='password';c.type=v?'text':'password';this.textContent=v?'🙈':'👁️'" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:2px;line-height:1">👁️</button>
+            </div>
+          </div>
         </div>
         <div class="grid-2">
           <div><label>Papel / Função</label>
