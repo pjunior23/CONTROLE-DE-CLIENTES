@@ -276,6 +276,7 @@ select optgroup option { color: var(--texto); font-weight: 400; padding-left: 14
   .sidebar {
     z-index: 60; width: 78vw; max-width: 280px;
     transform: translateX(-100%); transition: transform .25s ease;
+    background: var(--painel); box-shadow: 4px 0 24px rgba(0,0,0,.4);
   }
   .sidebar.aberta { transform: translateX(0); }
 

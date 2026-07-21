@@ -24,6 +24,9 @@
       </div>
       <div class="filtros">
         <input type="text" id="pBusca" placeholder="🔍 Buscar pessoa..." oninput="render()">
+        <select id="pFuncao" oninput="render()">
+          <option value="">Todas as funções</option>
+        </select>
         <select id="pOrdem" oninput="render()">
           <option value="alfabetica">🔤 Ordem alfabética</option>
           <option value="clientes">📊 Mais clientes primeiro</option>
@@ -45,7 +48,12 @@
     function render() {
       const busca = (document.getElementById('pBusca').value || '').trim().toLowerCase();
       const ordem = document.getElementById('pOrdem').value;
-      let pessoas = PESSOAS.filter(p => !busca || p.nome.toLowerCase().includes(busca));
+      const funcao = document.getElementById('pFuncao').value;
+      let pessoas = PESSOAS
+        .filter(p => !busca || p.nome.toLowerCase().includes(busca))
+        .map(p => funcao ? { ...p, clientes: p.clientes.filter(c => c.funcoes.includes(funcao)) } : p)
+        .filter(p => !funcao || p.clientes.length);
+      pessoas = pessoas.map(p => funcao ? { ...p, total: p.clientes.length } : p);
       pessoas = [...pessoas].sort((a, b) =>
         ordem === 'clientes' ? b.total - a.total : a.nome.localeCompare(b.nome));
       document.getElementById('lista').innerHTML = pessoas.length ? pessoas.map(p => `
@@ -68,6 +76,9 @@
     (async () => {
       const user = await montarSidebar('pessoas.html');
       SOU_ADMIN = user.papel === 'admin';
+      const { funcoes } = await api('/api/meta');
+      const selFuncao = document.getElementById('pFuncao');
+      funcoes.forEach(f => selFuncao.insertAdjacentHTML('beforeend', `<option value="${esc(f.label)}">${esc(f.label)}</option>`));
       PESSOAS = await api('/api/pessoas');
       render();
     })();
