@@ -99,7 +99,7 @@ async function montarSidebar(paginaAtiva) {
   document.getElementById('sidebar').innerHTML = `
     <div class="logo"><img src="img/beleza-boost.png" class="logo-bb" alt="Beleza Boost" onerror="this.outerHTML='<div class=&quot;marca&quot;>✨ Beleza Boost</div>'"><div class="app">Controle de Clientes</div></div>
     <nav class="menu">
-      ${itens.map(i => `<a href="${i.href}" class="${i.href === paginaAtiva ? 'ativo' : ''}">${i.rotulo}</a>`).join('')}
+      ${itens.map(i => `<a href="${i.href}" class="${i.href === paginaAtiva ? 'ativo' : ''}" onclick="fecharMenuMobile()">${i.rotulo}</a>`).join('')}
     </nav>
     <div class="user-card">
       <div class="nome">${esc(user.nome)}</div>
@@ -109,7 +109,36 @@ async function montarSidebar(paginaAtiva) {
         <button onclick="sair()">🚪 Sair</button>
       </div>
     </div>`;
+  montarTopoMobile();
   return user;
+}
+
+// Barra superior + botão hambúrguer, só aparecem no celular (ver CSS @media)
+function montarTopoMobile() {
+  if (!document.getElementById('topoMobile')) {
+    const topo = document.createElement('div');
+    topo.id = 'topoMobile';
+    topo.className = 'topo-mobile';
+    topo.innerHTML = `
+      <button class="hamburguer" onclick="abrirMenuMobile()" aria-label="Abrir menu">☰</button>
+      <span class="topo-mobile-titulo">✨ Beleza Boost</span>`;
+    document.body.prepend(topo);
+  }
+  if (!document.getElementById('overlayMenu')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'overlayMenu';
+    overlay.className = 'overlay-menu';
+    overlay.onclick = fecharMenuMobile;
+    document.body.appendChild(overlay);
+  }
+}
+function abrirMenuMobile() {
+  document.getElementById('sidebar').classList.add('aberta');
+  document.getElementById('overlayMenu').classList.add('visivel');
+}
+function fecharMenuMobile() {
+  document.getElementById('sidebar').classList.remove('aberta');
+  document.getElementById('overlayMenu')?.classList.remove('visivel');
 }
 
 async function sair() {
