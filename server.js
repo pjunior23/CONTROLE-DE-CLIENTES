@@ -650,6 +650,74 @@ app.get('/api/relatorios/churn.pdf', requireAdmin, (req, res) => {
   doc.end();
 });
 
+app.get('/api/relatorios/faturamento-cliente.pdf', requireFaturamento, (req, res) => {
+  const clienteId = req.query.clienteId;
+  const cliente = clientesFaturamentoVisiveis(req.session.user).find(c => c.id === clienteId);
+  if (!cliente) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
+
+  const registros = db.faturamento()
+    .filter(f => f.clienteId === clienteId)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+
+  const comAmbos = registros.filter(r => r.meta != null && r.faturamento != null);
+  const somaFat = registros.reduce((s, r) => s + (r.faturamento || 0), 0);
+  const ticketsValidos = registros.filter(r => r.ticketMedio != null).map(r => r.ticketMedio);
+  const ticketMedioGeral = ticketsValidos.length ? ticketsValidos.reduce((s, v) => s + v, 0) / ticketsValidos.length : null;
+  const percMedioMeta = comAmbos.length
+    ? Math.round(comAmbos.reduce((s, r) => s + (r.meta ? r.faturamento / r.meta : 0), 0) / comAmbos.length * 100)
+    : null;
+  const slug = String(cliente.nome || 'cliente').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="faturamento-${slug}.pdf"`);
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  doc.pipe(res);
+  let y = cabecalhoPDF(doc, `Faturamento — ${cliente.nome}`, `Histórico completo — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
+
+  y = cartoesPDF(doc, y, [
+    { valor: String(registros.length), rotulo: 'Meses lançados' },
+    { valor: moeda(somaFat), rotulo: 'Faturado no período', cor: PDF_VERDE },
+    { valor: ticketMedioGeral != null ? moeda(ticketMedioGeral) : '—', rotulo: 'Ticket médio geral' },
+    { valor: percMedioMeta != null ? percMedioMeta + '%' : '—', rotulo: '% médio da meta' },
+  ]);
+  y += 14;
+
+  if (registros.length) {
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text('Evolução mensal', 50, y); y += 22;
+    const maxValor = Math.max(1, ...registros.map(r => Math.max(r.meta || 0, r.faturamento || 0)));
+    registros.forEach(r => {
+      if (y > doc.page.height - 90) { doc.addPage(); y = 50; }
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#000').text(nomeMesBR(r.mes), 50, y, { width: 140 });
+      y += 13;
+      const largMeta = (r.meta || 0) / maxValor * 280;
+      doc.rect(165, y - 10, Math.max(largMeta, r.meta ? 2 : 0), 9).fill(PDF_OURO);
+      doc.font('Helvetica').fontSize(8).fillColor(PDF_SUAVE).text('Meta ' + moeda(r.meta), 165 + Math.max(largMeta, 20) + 6, y - 10);
+      y += 12;
+      const largFat = (r.faturamento || 0) / maxValor * 280;
+      doc.rect(165, y - 10, Math.max(largFat, r.faturamento ? 2 : 0), 9).fill(PDF_ROSA);
+      doc.font('Helvetica').fontSize(8).fillColor(PDF_SUAVE).text('Faturado ' + moeda(r.faturamento), 165 + Math.max(largFat, 20) + 6, y - 10);
+      y += 18;
+    });
+    y += 6;
+
+    if (y > doc.page.height - 150) { doc.addPage(); y = 50; }
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text('Tabela detalhada', 50, y); y += 22;
+    y = tabelaPDF(doc, y,
+      ['Mês', 'Meta', 'Faturamento', 'Diferença', 'Ticket Médio'],
+      registros.map(r => {
+        const dif = (r.faturamento ?? 0) - (r.meta ?? 0);
+        const temAmbos = r.meta != null && r.faturamento != null;
+        return [nomeMesBR(r.mes), moeda(r.meta), moeda(r.faturamento), temAmbos ? (dif >= 0 ? '+' : '') + moeda(dif) : '—', moeda(r.ticketMedio)];
+      }),
+      [100, 90, 100, 100, 100]
+    );
+  } else {
+    doc.font('Helvetica').fontSize(10).fillColor(PDF_SUAVE).text('Nenhum mês lançado ainda para este cliente.', 50, y);
+  }
+
+  doc.end();
+});
+
 app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, (req, res) => {
   const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
   const pessoas = montarPessoas(clientes);

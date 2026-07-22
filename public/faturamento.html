@@ -21,6 +21,7 @@
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select id="fCliente" style="min-width:220px"></select>
           <button class="btn mini" id="btnLink" onclick="copiarLink()" disabled>🔗 Copiar link do cliente</button>
+          <button class="btn mini ouro" id="btnPdfCliente" onclick="baixarPdfCliente()" disabled>📄 Baixar PDF do cliente</button>
         </div>
       </div>
 
@@ -103,6 +104,7 @@
       CLIENTE_ATUAL = id;
       document.getElementById('conteudoCliente').style.display = 'block';
       document.getElementById('btnLink').disabled = false;
+      document.getElementById('btnPdfCliente').disabled = false;
       limparForm();
       REGISTROS = await api('/api/faturamento/' + id);
       renderHistorico();
@@ -184,6 +186,11 @@
         options: { responsive: true, plugins: { legend: { display: false } },
           scales: { x: { ticks: { color: tickColor }, grid: { display: false } }, y: { ticks: { color: tickColor }, grid: { color: gridColor } } } }
       });
+    }
+
+    function baixarPdfCliente() {
+      if (!CLIENTE_ATUAL) return;
+      window.location.href = `/api/relatorios/faturamento-cliente.pdf?clienteId=${CLIENTE_ATUAL}`;
     }
 
     function copiarLink() {
