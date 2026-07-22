@@ -78,7 +78,7 @@
       SOU_ADMIN = user.papel === 'admin';
       const { funcoes } = await api('/api/meta');
       const selFuncao = document.getElementById('pFuncao');
-      funcoes.forEach(f => selFuncao.insertAdjacentHTML('beforeend', `<option value="${esc(f.label)}">${esc(f.label)}</option>`));
+      funcoes.filter(f => f.key !== 'consultor').forEach(f => selFuncao.insertAdjacentHTML('beforeend', `<option value="${esc(f.label)}">${esc(f.label)}</option>`));
       PESSOAS = await api('/api/pessoas');
       render();
     })();

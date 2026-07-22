@@ -287,6 +287,7 @@ app.get('/api/pessoas', requireAuth, (req, res) => {
   for (const c of clientes) {
     if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) continue; // já saiu
     for (const f of FUNCOES) {
+      if (f.key === 'consultor') continue; // Consultor/Gerente não entra na Visão por Pessoa
       const bruto = (c.responsaveis?.[f.key] || '').trim();
       if (!bruto) continue;
       const up = bruto.toUpperCase();
