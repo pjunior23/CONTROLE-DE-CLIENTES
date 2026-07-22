@@ -31,6 +31,11 @@
         </select>
         <select id="fMarca"><option value="">Todas as marcas</option></select>
         <select id="fPessoa"><option value="">Todas as pessoas</option></select>
+        <select id="fOrdem">
+          <option value="alfabetica">🔤 Ordem alfabética</option>
+          <option value="saida-recente">📅 Saída mais recente primeiro</option>
+          <option value="saida-antiga">📅 Saída mais antiga primeiro</option>
+        </select>
       </div>
 
       <div class="tabela" id="tabela"></div>
@@ -130,6 +135,10 @@
         }
         return true;
       });
+      const ordem = document.getElementById('fOrdem').value;
+      if (ordem === 'saida-recente') filtrados.sort((a, b) => (b.dataSaida || '').localeCompare(a.dataSaida || ''));
+      else if (ordem === 'saida-antiga') filtrados.sort((a, b) => (a.dataSaida || '').localeCompare(b.dataSaida || ''));
+      else filtrados.sort((a, b) => a.nome.localeCompare(b.nome));
       const total = CLIENTES.filter(c => statusEfetivo(c) !== 'saiu').length;
       document.getElementById('contagem').textContent = st === 'saiu'
         ? `${filtrados.length} clientes no histórico`
@@ -271,7 +280,7 @@
       const params = new URLSearchParams(location.search);
       const param = params.get('status');
       if (param) document.getElementById('fStatus').value = param;
-      ['fBusca', 'fStatus', 'fMarca', 'fPessoa'].forEach(id => document.getElementById(id).addEventListener('input', render));
+      ['fBusca', 'fStatus', 'fMarca', 'fPessoa', 'fOrdem'].forEach(id => document.getElementById(id).addEventListener('input', render));
       await carregar();
       // Abrir direto o cadastro de um cliente específico (vindo da Visão por Pessoa, por exemplo)
       const abrirId = params.get('abrir');
