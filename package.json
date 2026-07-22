@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "import": "node scripts/import-csv.js",
-    "import-faturamento": "node scripts/import-faturamento.js"
+    "import-faturamento": "node scripts/import-faturamento.js",
+    "import-desligamento": "node scripts/import-desligamento.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
