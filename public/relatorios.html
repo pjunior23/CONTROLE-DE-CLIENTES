@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatórios — Beleza Boost</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="titulo-pagina">📑 Relatórios</div>
+      <div class="subtitulo">Exporte relatórios em PDF pra compartilhar com o time ou a diretoria</div>
+
+      <div class="grid-2" style="gap:16px">
+        <div class="card">
+          <h2>📅 Relatório Mensal da Carteira</h2>
+          <p style="color:var(--texto-suave);font-size:13px;margin-bottom:14px">Entradas, saídas, status e faturamento (meta x real) de um mês específico.</p>
+          <label>Mês</label>
+          <input type="month" id="mesCarteira">
+          <div class="rodape" style="justify-content:flex-start;margin-top:16px">
+            <button class="btn ouro" onclick="baixar('carteira')">⬇️ Baixar PDF</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>📉 Relatório de Churn</h2>
+          <p style="color:var(--texto-suave);font-size:13px;margin-bottom:14px">Total de clientes que já saíram, permanência média e saídas por mês.</p>
+          <div class="rodape" style="justify-content:flex-start;margin-top:16px">
+            <button class="btn ouro" onclick="baixar('churn')">⬇️ Baixar PDF</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>🧑‍💼 Carga por Pessoa</h2>
+          <p style="color:var(--texto-suave);font-size:13px;margin-bottom:14px">Quantos clientes ativos cada pessoa da equipe está atendendo agora.</p>
+          <div class="rodape" style="justify-content:flex-start;margin-top:16px">
+            <button class="btn ouro" onclick="baixar('carga-pessoa')">⬇️ Baixar PDF</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    function baixar(tipo) {
+      let url = `/api/relatorios/${tipo}.pdf`;
+      if (tipo === 'carteira') {
+        const mes = document.getElementById('mesCarteira').value;
+        if (mes) url += `?mes=${mes}`;
+      }
+      window.location.href = url;
+    }
+
+    (async () => {
+      const user = await montarSidebar('relatorios.html');
+      if (user.papel !== 'admin') {
+        document.querySelector('.conteudo').innerHTML = '<div class="vazio">Você não tem acesso a esta página.</div>';
+        return;
+      }
+      const hoje = new Date();
+      document.getElementById('mesCarteira').value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    })();
+  </script>
+</body>
+</html>

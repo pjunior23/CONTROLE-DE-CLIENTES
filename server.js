@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -280,8 +281,7 @@ function statusEfetivoSrv(c) {
 // ------------------------------------------------------------
 // Visão por pessoa
 // ------------------------------------------------------------
-app.get('/api/pessoas', requireAuth, (req, res) => {
-  const clientes = clientesVisiveis(req.session.user);
+function montarPessoas(clientes) {
   const mapa = {};
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   for (const c of clientes) {
@@ -301,10 +301,13 @@ app.get('/api/pessoas', requireAuth, (req, res) => {
       }
     }
   }
-  const pessoas = Object.values(mapa)
+  return Object.values(mapa)
     .map(p => ({ nome: p.nome, clientes: Object.values(p.clientes), total: Object.keys(p.clientes).length }))
     .sort((a, b) => b.total - a.total);
-  res.json(pessoas);
+}
+
+app.get('/api/pessoas', requireAuth, (req, res) => {
+  res.json(montarPessoas(clientesVisiveis(req.session.user)));
 });
 
 // ------------------------------------------------------------
@@ -477,6 +480,193 @@ app.post('/api/faturamento', requireFaturamento, (req, res) => {
   if (idx >= 0) registros[idx] = registro; else registros.push(registro);
   db.saveFaturamento(registros);
   res.status(201).json(registro);
+});
+
+// ------------------------------------------------------------
+// Relatórios em PDF — só Admin
+// ------------------------------------------------------------
+const PDF_OURO = '#C4973B';
+const PDF_ROSA = '#e91e8c';
+const PDF_SUAVE = '#6b6b78';
+const PDF_VERDE = '#1f9d55';
+const PDF_VERMELHO = '#d93636';
+
+function moeda(v) {
+  if (v == null) return '—';
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtDataBR(iso) {
+  if (!iso) return '—';
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+function nomeMesBR(mesIso) {
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const [a, m] = mesIso.split('-');
+  return `${meses[Number(m) - 1]} de ${a}`;
+}
+
+function cabecalhoPDF(doc, titulo, subtitulo) {
+  doc.rect(0, 0, doc.page.width, 90).fill('#0a0a0f');
+  doc.fillColor(PDF_OURO).fontSize(20).font('Helvetica-Bold').text('BELEZA BOOST', 50, 28);
+  doc.fillColor('#ffffff').fontSize(11).font('Helvetica').text('Controle de Clientes — Relatório', 50, 54);
+  doc.fillColor('#000000');
+  doc.fontSize(16).font('Helvetica-Bold').text(titulo, 50, 110);
+  if (subtitulo) doc.fontSize(10).font('Helvetica').fillColor(PDF_SUAVE).text(subtitulo, 50, 132);
+  doc.fillColor('#000000');
+  doc.moveTo(50, 152).lineTo(doc.page.width - 50, 152).strokeColor('#dddddd').stroke();
+  return 168;
+}
+
+function tabelaPDF(doc, y, colunas, linhas, larguras) {
+  doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_SUAVE);
+  let x = 50;
+  colunas.forEach((c, i) => { doc.text(c, x, y, { width: larguras[i] }); x += larguras[i]; });
+  y += 16;
+  doc.moveTo(50, y).lineTo(doc.page.width - 50, y).strokeColor('#eeeeee').stroke();
+  y += 8;
+  doc.font('Helvetica').fontSize(9).fillColor('#000000');
+  linhas.forEach(linha => {
+    if (y > doc.page.height - 60) { doc.addPage(); y = 50; }
+    x = 50;
+    linha.forEach((val, i) => { doc.text(String(val), x, y, { width: larguras[i] }); x += larguras[i]; });
+    y += 16;
+  });
+  return y;
+}
+
+function cartoesPDF(doc, y, itens) {
+  const largura = (doc.page.width - 100 - (itens.length - 1) * 12) / itens.length;
+  const altura = 64;
+  itens.forEach((item, i) => {
+    const x = 50 + i * (largura + 12);
+    doc.roundedRect(x, y, largura, altura, 6).fillAndStroke('#f7f5f0', '#e5e0d5');
+    const tamanhoFonte = String(item.valor).length > 9 ? 12 : 17;
+    doc.fillColor(item.cor || PDF_OURO).font('Helvetica-Bold').fontSize(tamanhoFonte)
+      .text(item.valor, x + 10, y + 9, { width: largura - 20 });
+    doc.fillColor(PDF_SUAVE).font('Helvetica').fontSize(8.5)
+      .text(item.rotulo, x + 10, y + altura - 18, { width: largura - 20 });
+  });
+  doc.fillColor('#000000');
+  return y + altura + 16;
+}
+
+app.get('/api/relatorios/carteira.pdf', requireAdmin, (req, res) => {
+  const mes = /^\d{4}-\d{2}$/.test(req.query.mes) ? req.query.mes : new Date().toISOString().slice(0, 7);
+  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+  const ativos = clientes.filter(c => statusEfetivoSrv(c) !== 'saiu');
+  const emInauguracao = ativos.filter(c => statusEfetivoSrv(c) === 'prelancamento');
+  const entraram = clientes.filter(c => (c.dataEntrada || '').startsWith(mes));
+  const sairam = clientes.filter(c => (c.dataSaida || '').startsWith(mes));
+  const registrosFat = db.faturamento().filter(f => f.mes === mes);
+  const somaMeta = registrosFat.reduce((s, f) => s + (f.meta || 0), 0);
+  const somaFat = registrosFat.reduce((s, f) => s + (f.faturamento || 0), 0);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="relatorio-carteira-${mes}.pdf"`);
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  doc.pipe(res);
+  let y = cabecalhoPDF(doc, 'Relatório Mensal da Carteira', `${nomeMesBR(mes)} — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
+
+  y = cartoesPDF(doc, y, [
+    { valor: String(ativos.length), rotulo: 'Clientes ativos' },
+    { valor: String(entraram.length), rotulo: 'Entraram no mês', cor: PDF_VERDE },
+    { valor: String(sairam.length), rotulo: 'Saíram no mês', cor: PDF_VERMELHO },
+    { valor: String(emInauguracao.length), rotulo: 'Em inauguração' },
+  ]);
+  y += 12;
+
+  doc.font('Helvetica-Bold').fontSize(13).fillColor('#000').text('Faturamento do mês', 50, y); y += 22;
+  y = cartoesPDF(doc, y, [
+    { valor: moeda(somaMeta), rotulo: 'Meta total' },
+    { valor: moeda(somaFat), rotulo: 'Faturado' },
+    { valor: (somaFat - somaMeta >= 0 ? '+' : '') + moeda(somaFat - somaMeta), rotulo: 'Diferença', cor: somaFat - somaMeta >= 0 ? PDF_VERDE : PDF_VERMELHO },
+    { valor: somaMeta ? Math.round((somaFat / somaMeta) * 100) + '%' : '—', rotulo: '% da meta atingido' },
+  ]);
+  y += 14;
+
+  if (entraram.length) {
+    doc.font('Helvetica-Bold').fontSize(12).text('Clientes que entraram', 50, y); y += 20;
+    y = tabelaPDF(doc, y, ['Cliente', 'Data de entrada'], entraram.map(c => [c.nome, fmtDataBR(c.dataEntrada)]), [340, 150]);
+    y += 14;
+  }
+  if (sairam.length) {
+    if (y > doc.page.height - 150) { doc.addPage(); y = 50; }
+    doc.font('Helvetica-Bold').fontSize(12).text('Clientes que saíram', 50, y); y += 20;
+    y = tabelaPDF(doc, y, ['Cliente', 'Data de saída'], sairam.map(c => [c.nome, fmtDataBR(c.dataSaida)]), [340, 150]);
+  }
+  if (!entraram.length && !sairam.length) {
+    doc.font('Helvetica').fontSize(10).fillColor(PDF_SUAVE).text('Nenhuma entrada ou saída registrada neste mês.', 50, y);
+  }
+
+  doc.end();
+});
+
+app.get('/api/relatorios/churn.pdf', requireAdmin, (req, res) => {
+  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+  const saidos = clientes.filter(c => c.dataSaida);
+  const porMes = {};
+  saidos.forEach(c => { const mes = c.dataSaida.slice(0, 7); porMes[mes] = (porMes[mes] || 0) + 1; });
+  const mesesOrdenados = Object.keys(porMes).sort();
+
+  let somaDias = 0, comDatas = 0;
+  saidos.forEach(c => {
+    if (c.dataEntrada) {
+      const dias = (new Date(c.dataSaida) - new Date(c.dataEntrada)) / 86400000;
+      if (dias > 0) { somaDias += dias; comDatas++; }
+    }
+  });
+  const mediaMeses = comDatas ? Math.round(somaDias / comDatas / 30) : null;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="relatorio-churn.pdf"');
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  doc.pipe(res);
+  let y = cabecalhoPDF(doc, 'Relatório de Churn', `Clientes que já saíram da carteira — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
+
+  y = cartoesPDF(doc, y, [
+    { valor: String(saidos.length), rotulo: 'Total de saídas registradas', cor: PDF_VERMELHO },
+    { valor: mediaMeses != null ? mediaMeses + ' meses' : '—', rotulo: 'Permanência média' },
+    { valor: String(clientes.filter(c => statusEfetivoSrv(c) !== 'saiu').length), rotulo: 'Ativos hoje', cor: PDF_VERDE },
+  ]);
+  y += 20;
+
+  if (mesesOrdenados.length) {
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text('Saídas por mês', 50, y); y += 24;
+    const maxCount = Math.max(1, ...mesesOrdenados.map(m => porMes[m]));
+    mesesOrdenados.forEach(mes => {
+      if (y > doc.page.height - 60) { doc.addPage(); y = 50; }
+      const qtd = porMes[mes];
+      const largura = (qtd / maxCount) * 280;
+      doc.font('Helvetica').fontSize(9).fillColor('#000').text(nomeMesBR(mes), 50, y, { width: 110 });
+      doc.rect(165, y - 1, Math.max(largura, 2), 12).fill(PDF_ROSA);
+      doc.fillColor('#000').text(String(qtd), 165 + largura + 8, y);
+      y += 20;
+    });
+  } else {
+    doc.font('Helvetica').fontSize(10).fillColor(PDF_SUAVE).text('Nenhuma saída registrada ainda.', 50, y);
+  }
+
+  doc.end();
+});
+
+app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, (req, res) => {
+  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+  const pessoas = montarPessoas(clientes);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="relatorio-carga-por-pessoa.pdf"');
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  doc.pipe(res);
+  let y = cabecalhoPDF(doc, 'Carga de Trabalho por Pessoa', `${pessoas.length} pessoas com clientes ativos — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
+
+  if (pessoas.length) {
+    y = tabelaPDF(doc, y, ['Pessoa', 'Clientes ativos'], pessoas.map(p => [p.nome, String(p.total)]), [400, 100]);
+  } else {
+    doc.font('Helvetica').fontSize(10).fillColor(PDF_SUAVE).text('Nenhuma pessoa com cliente ativo no momento.', 50, y);
+  }
+
+  doc.end();
 });
 
 // ------------------------------------------------------------

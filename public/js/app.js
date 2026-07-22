@@ -96,6 +96,7 @@ async function montarSidebar(paginaAtiva) {
     { href: 'pessoas.html', rotulo: '🧑‍💼 Por Pessoa' },
   ];
   if (user.papel === 'admin' || user.funcao === 'atendimento') itens.push({ href: 'faturamento.html', rotulo: '💰 Faturamento' });
+  if (user.papel === 'admin') itens.push({ href: 'relatorios.html', rotulo: '📑 Relatórios' });
   if (user.papel === 'admin') itens.push({ href: 'configuracoes.html', rotulo: '⚙️ Configurações' });
   document.getElementById('sidebar').innerHTML = `
     <div class="logo"><img src="img/beleza-boost.png" class="logo-bb" alt="Beleza Boost" onerror="this.outerHTML='<div class=&quot;marca&quot;>✨ Beleza Boost</div>'"><div class="app">Controle de Clientes</div></div>
