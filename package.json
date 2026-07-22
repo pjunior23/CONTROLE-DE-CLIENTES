@@ -7,7 +7,8 @@
     "start": "node server.js",
     "import": "node scripts/import-csv.js",
     "import-faturamento": "node scripts/import-faturamento.js",
-    "import-desligamento": "node scripts/import-desligamento.js"
+    "import-desligamento": "node scripts/import-desligamento.js",
+    "corrigir-duplicados": "node scripts/corrigir-duplicados.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
