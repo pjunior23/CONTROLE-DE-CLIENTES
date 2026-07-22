@@ -1,0 +1,572 @@
+[
+  {
+    "unidade": "Ananindeua Centro",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 82000,
+        "ticketMedio": 167
+      },
+      "2026-02": {
+        "meta": 80000,
+        "faturamento": 76000,
+        "ticketMedio": null
+      },
+      "2026-03": {
+        "meta": 92000,
+        "faturamento": 90400,
+        "ticketMedio": 168
+      },
+      "2026-04": {
+        "meta": 105000,
+        "faturamento": 100000,
+        "ticketMedio": 186
+      },
+      "2026-05": {
+        "meta": null,
+        "faturamento": 118000,
+        "ticketMedio": 187
+      }
+    }
+  },
+  {
+    "unidade": "Barão Geraldo",
+    "meses": {
+      "2026-02": {
+        "meta": 60000,
+        "faturamento": 59547.8,
+        "ticketMedio": 143
+      },
+      "2026-03": {
+        "meta": 66000,
+        "faturamento": 64274.5,
+        "ticketMedio": 141.57
+      }
+    }
+  },
+  {
+    "unidade": "Chácara Klabin",
+    "meses": {
+      "2026-03": {
+        "meta": 80000,
+        "faturamento": 93000,
+        "ticketMedio": null
+      },
+      "2026-04": {
+        "meta": null,
+        "faturamento": 92645,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Chácara Santo Antônio",
+    "meses": {
+      "2026-01": {
+        "meta": 65000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Cidade Nova BH",
+    "meses": {
+      "2026-03": {
+        "meta": 100000,
+        "faturamento": 89000,
+        "ticketMedio": 140
+      }
+    }
+  },
+  {
+    "unidade": "Gama",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 62000,
+        "ticketMedio": null
+      },
+      "2026-03": {
+        "meta": 80000,
+        "faturamento": 67500,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Gramado",
+    "meses": {
+      "2026-03": {
+        "meta": null,
+        "faturamento": 120194.8,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Granja Viana",
+    "meses": {
+      "2026-03": {
+        "meta": 103000,
+        "faturamento": 105000,
+        "ticketMedio": null
+      },
+      "2026-04": {
+        "meta": 103000,
+        "faturamento": 109000,
+        "ticketMedio": 122.89
+      },
+      "2026-05": {
+        "meta": 120000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Guará",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 170000,
+        "ticketMedio": 144.92
+      },
+      "2026-02": {
+        "meta": 188000,
+        "faturamento": 177000,
+        "ticketMedio": 155.83
+      },
+      "2026-03": {
+        "meta": 190000,
+        "faturamento": 204000,
+        "ticketMedio": 171
+      }
+    }
+  },
+  {
+    "unidade": "Ipiranga",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 147000,
+        "ticketMedio": 121
+      },
+      "2026-03": {
+        "meta": 150000,
+        "faturamento": 183363.05,
+        "ticketMedio": 115
+      }
+    }
+  },
+  {
+    "unidade": "Juiz de Fora",
+    "meses": {
+      "2026-01": {
+        "meta": 45000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Mooca Tobias Barreto",
+    "meses": {
+      "2026-02": {
+        "meta": 115000,
+        "faturamento": 119000,
+        "ticketMedio": 136.9
+      },
+      "2026-03": {
+        "meta": 135000,
+        "faturamento": 124104,
+        "ticketMedio": null
+      },
+      "2026-04": {
+        "meta": 130000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Mogi das Cruzes",
+    "meses": {
+      "2026-01": {
+        "meta": 45000,
+        "faturamento": 44000,
+        "ticketMedio": 178
+      },
+      "2026-03": {
+        "meta": 50000,
+        "faturamento": 51000,
+        "ticketMedio": 168
+      }
+    }
+  },
+  {
+    "unidade": "Morumbi",
+    "meses": {
+      "2026-01": {
+        "meta": 105000,
+        "faturamento": 105000,
+        "ticketMedio": 148.28
+      }
+    }
+  },
+  {
+    "unidade": "Nova Mutum",
+    "meses": {
+      "2026-02": {
+        "meta": 40000,
+        "faturamento": 24000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Osasco",
+    "meses": {
+      "2026-03": {
+        "meta": 80000,
+        "faturamento": 68000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Palmas",
+    "meses": {
+      "2026-03": {
+        "meta": 55000,
+        "faturamento": 25000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Patos de Minas",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 55000,
+        "ticketMedio": 134
+      },
+      "2026-04": {
+        "meta": 60000,
+        "faturamento": 51345.7,
+        "ticketMedio": 119.13
+      }
+    }
+  },
+  {
+    "unidade": "Pinheiros",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 140000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Pirassununga",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 46000,
+        "ticketMedio": 150
+      },
+      "2026-02": {
+        "meta": 50000,
+        "faturamento": 40000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Ponta Porã",
+    "meses": {
+      "2026-01": {
+        "meta": 63000,
+        "faturamento": null,
+        "ticketMedio": null
+      },
+      "2026-02": {
+        "meta": 50000,
+        "faturamento": 46000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Quirinópolis",
+    "meses": {
+      "2026-03": {
+        "meta": null,
+        "faturamento": 63500,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Recreio dos Bandeirantes",
+    "meses": {
+      "2026-01": {
+        "meta": 40000,
+        "faturamento": null,
+        "ticketMedio": 157
+      }
+    }
+  },
+  {
+    "unidade": "Rio Branco",
+    "meses": {
+      "2026-01": {
+        "meta": 55000,
+        "faturamento": 40000,
+        "ticketMedio": 133
+      }
+    }
+  },
+  {
+    "unidade": "Santa Helena",
+    "meses": {
+      "2026-02": {
+        "meta": 60000,
+        "faturamento": 20000,
+        "ticketMedio": 142
+      }
+    }
+  },
+  {
+    "unidade": "Santa Maria",
+    "meses": {
+      "2026-02": {
+        "meta": null,
+        "faturamento": 37000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Santarem",
+    "meses": {
+      "2026-01": {
+        "meta": 69000,
+        "faturamento": 89358,
+        "ticketMedio": 131
+      },
+      "2026-02": {
+        "meta": 69000,
+        "faturamento": 65168,
+        "ticketMedio": 131
+      },
+      "2026-04": {
+        "meta": 79000,
+        "faturamento": 80426,
+        "ticketMedio": 134
+      }
+    }
+  },
+  {
+    "unidade": "São Judas",
+    "meses": {
+      "2026-02": {
+        "meta": null,
+        "faturamento": 24000,
+        "ticketMedio": 134
+      }
+    }
+  },
+  {
+    "unidade": "Sertãozinho",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 37000,
+        "ticketMedio": null
+      },
+      "2026-02": {
+        "meta": null,
+        "faturamento": 33000,
+        "ticketMedio": null
+      },
+      "2026-03": {
+        "meta": 50000,
+        "faturamento": 36000,
+        "ticketMedio": 104
+      }
+    }
+  },
+  {
+    "unidade": "Sobradinho",
+    "meses": {
+      "2026-04": {
+        "meta": 77000,
+        "faturamento": 75000,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Suzano",
+    "meses": {
+      "2026-02": {
+        "meta": null,
+        "faturamento": 24600,
+        "ticketMedio": 104
+      }
+    }
+  },
+  {
+    "unidade": "Taguatinga",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 97000,
+        "ticketMedio": null
+      },
+      "2026-02": {
+        "meta": 95000,
+        "faturamento": 100000,
+        "ticketMedio": 152.01
+      },
+      "2026-03": {
+        "meta": 100000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Varginha",
+    "meses": {
+      "2026-02": {
+        "meta": null,
+        "faturamento": 45979,
+        "ticketMedio": 90
+      },
+      "2026-03": {
+        "meta": 70000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Vila Leopoldina",
+    "meses": {
+      "2026-02": {
+        "meta": 133980,
+        "faturamento": 135122,
+        "ticketMedio": 149.6
+      },
+      "2026-03": {
+        "meta": 144275,
+        "faturamento": 150400,
+        "ticketMedio": 160.59
+      }
+    }
+  },
+  {
+    "unidade": "Vila Mariana",
+    "meses": {
+      "2026-02": {
+        "meta": 157480,
+        "faturamento": 152178,
+        "ticketMedio": 152.03
+      },
+      "2026-03": {
+        "meta": 163990,
+        "faturamento": 193690,
+        "ticketMedio": 161.54
+      }
+    }
+  },
+  {
+    "unidade": "Vila Mascote",
+    "meses": {
+      "2026-01": {
+        "meta": 65000,
+        "faturamento": 79800,
+        "ticketMedio": 149
+      }
+    }
+  },
+  {
+    "unidade": "Vila Matilde",
+    "meses": {
+      "2026-03": {
+        "meta": 70000,
+        "faturamento": 47465.2,
+        "ticketMedio": 130.76
+      }
+    }
+  },
+  {
+    "unidade": "Vila Prudente",
+    "meses": {
+      "2026-02": {
+        "meta": 130000,
+        "faturamento": 144000,
+        "ticketMedio": 132
+      }
+    }
+  },
+  {
+    "unidade": "Vila Sonia",
+    "meses": {
+      "2026-01": {
+        "meta": null,
+        "faturamento": 66810.1,
+        "ticketMedio": 96
+      },
+      "2026-02": {
+        "meta": 100000,
+        "faturamento": null,
+        "ticketMedio": null
+      },
+      "2026-04": {
+        "meta": 95000,
+        "faturamento": 95013,
+        "ticketMedio": 104
+      }
+    }
+  },
+  {
+    "unidade": "Vila Velha",
+    "meses": {
+      "2026-03": {
+        "meta": 91000,
+        "faturamento": 79548,
+        "ticketMedio": 150.38
+      }
+    }
+  },
+  {
+    "unidade": "Vilhena",
+    "meses": {
+      "2026-02": {
+        "meta": 50000,
+        "faturamento": 45000,
+        "ticketMedio": 122.18
+      },
+      "2026-03": {
+        "meta": 50000,
+        "faturamento": null,
+        "ticketMedio": null
+      }
+    }
+  },
+  {
+    "unidade": "Vitória",
+    "meses": {
+      "2026-03": {
+        "meta": 51000,
+        "faturamento": 66000,
+        "ticketMedio": 133
+      }
+    }
+  }
+]

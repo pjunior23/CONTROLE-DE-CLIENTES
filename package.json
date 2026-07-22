@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "import": "node scripts/import-csv.js"
+    "import": "node scripts/import-csv.js",
+    "import-faturamento": "node scripts/import-faturamento.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
