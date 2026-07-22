@@ -415,6 +415,71 @@ app.get('/api/meta', requireAuth, (req, res) => {
 });
 
 // ------------------------------------------------------------
+// Faturamento — só Admin e Estrategista de Atendimento acessam
+// ------------------------------------------------------------
+db.faturamento = () => loadJSON('faturamento.json', []);
+db.saveFaturamento = (d) => saveJSON('faturamento.json', d);
+
+function podeAcessarFaturamento(user) {
+  return user.papel === 'admin' || user.funcao === 'atendimento';
+}
+
+function requireFaturamento(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ erro: 'Não autenticado' });
+  if (!podeAcessarFaturamento(req.session.user)) return res.status(403).json({ erro: 'Sem acesso ao faturamento' });
+  next();
+}
+
+// Clientes visíveis para faturamento: admin vê todos; atendimento só os próprios (onde é o responsável de Atendimento)
+function clientesFaturamentoVisiveis(user) {
+  if (user.papel === 'admin') return db.clientes().filter(c => c.agencyId === user.agencyId);
+  const nome = (user.membroNome || '').trim().toUpperCase();
+  if (!nome) return [];
+  return db.clientes().filter(c =>
+    c.agencyId === user.agencyId &&
+    (c.responsaveis?.atendimento || '').toUpperCase().split('/').map(s => s.trim()).includes(nome)
+  );
+}
+
+app.get('/api/faturamento/clientes', requireFaturamento, (req, res) => {
+  const clientes = clientesFaturamentoVisiveis(req.session.user)
+    .map(c => ({ id: c.id, nome: c.nome, marca: c.marca }))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+  res.json(clientes);
+});
+
+app.get('/api/faturamento/:clienteId', requireFaturamento, (req, res) => {
+  const visiveis = clientesFaturamentoVisiveis(req.session.user);
+  if (!visiveis.some(c => c.id === req.params.clienteId)) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
+  const registros = db.faturamento()
+    .filter(f => f.clienteId === req.params.clienteId)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+  res.json(registros);
+});
+
+app.post('/api/faturamento', requireFaturamento, (req, res) => {
+  const { clienteId, mes, meta, faturamento, ticketMedio } = req.body || {};
+  if (!clienteId || !mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ erro: 'Cliente e mês (AAAA-MM) são obrigatórios' });
+  const visiveis = clientesFaturamentoVisiveis(req.session.user);
+  if (!visiveis.some(c => c.id === clienteId)) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
+  const registros = db.faturamento();
+  const idx = registros.findIndex(f => f.clienteId === clienteId && f.mes === mes);
+  const registro = {
+    id: idx >= 0 ? registros[idx].id : crypto.randomUUID(),
+    agencyId: req.session.user.agencyId,
+    clienteId, mes,
+    meta: meta === '' || meta == null ? null : Number(meta),
+    faturamento: faturamento === '' || faturamento == null ? null : Number(faturamento),
+    ticketMedio: ticketMedio === '' || ticketMedio == null ? null : Number(ticketMedio),
+    criadoEm: idx >= 0 ? registros[idx].criadoEm : new Date().toISOString(),
+    atualizadoEm: new Date().toISOString(),
+  };
+  if (idx >= 0) registros[idx] = registro; else registros.push(registro);
+  db.saveFaturamento(registros);
+  res.status(201).json(registro);
+});
+
+// ------------------------------------------------------------
 // Páginas estáticas (proteção: sem sessão → login)
 // ------------------------------------------------------------
 const PUBLICAS = ['/login.html'];

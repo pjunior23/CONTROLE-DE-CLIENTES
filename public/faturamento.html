@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Faturamento — Beleza Boost</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="conteudo">
+      <div class="toolbar">
+        <div>
+          <div class="titulo-pagina">💰 Faturamento</div>
+          <div class="subtitulo" style="margin-bottom:0">Meta, faturamento real e ticket médio por mês</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="fCliente" style="min-width:220px"></select>
+          <button class="btn mini" id="btnLink" onclick="copiarLink()" disabled>🔗 Copiar link do cliente</button>
+        </div>
+      </div>
+
+      <div id="semAcesso" class="vazio" style="display:none">Nenhum cliente disponível para você aqui.</div>
+
+      <div id="conteudoCliente" style="display:none">
+        <div class="card">
+          <h2>📝 Lançar faturamento do mês</h2>
+          <form id="formFat">
+            <div class="grid-3">
+              <div><label>Mês</label><input type="month" id="fMes" required></div>
+              <div><label>Meta (R$)</label><input type="number" step="0.01" id="fMeta" placeholder="Ex.: 92000.00"></div>
+              <div><label>Faturamento (R$)</label><input type="number" step="0.01" id="fFaturamento" placeholder="Ex.: 98500.00"></div>
+            </div>
+            <div class="grid-3">
+              <div><label>Ticket Médio (R$)</label><input type="number" step="0.01" id="fTicket" placeholder="Ex.: 178.00"></div>
+              <div><label>Diferença (automático)</label><div id="fDiferenca" style="padding:10px 12px;margin-top:5px;border:1px dashed var(--border);border-radius:10px;color:var(--texto-suave)">—</div></div>
+              <div></div>
+            </div>
+            <div class="rodape">
+              <button type="button" class="btn" onclick="limparForm()">Cancelar</button>
+              <button type="submit" class="btn ouro">💾 Salvar mês</button>
+            </div>
+            <div class="erro" id="erroForm"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>📋 Histórico lançado</h2>
+          <div class="tabela" id="tabelaHistorico"></div>
+        </div>
+
+        <div class="grid-2" style="gap:16px" id="charts">
+          <div class="card">
+            <h2>Meta x Faturamento</h2>
+            <canvas id="chBar" height="140"></canvas>
+          </div>
+          <div class="card">
+            <h2>Evolução do Ticket Médio</h2>
+            <canvas id="chLine" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    let CLIENTES = [];
+    let REGISTROS = [];
+    let CLIENTE_ATUAL = null;
+    let chBar = null, chLine = null;
+
+    function fmt(v) {
+      if (v == null || v === '') return '—';
+      return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function nomeMes(iso) {
+      const [a, m] = iso.split('-');
+      const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      return `${meses[Number(m) - 1]}/${a}`;
+    }
+
+    async function carregarClientes() {
+      CLIENTES = await api('/api/faturamento/clientes');
+      const sel = document.getElementById('fCliente');
+      if (!CLIENTES.length) {
+        document.getElementById('semAcesso').style.display = 'block';
+        return;
+      }
+      sel.innerHTML = CLIENTES.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+      const params = new URLSearchParams(location.search);
+      const preSelecionado = params.get('cliente');
+      if (preSelecionado && CLIENTES.some(c => c.id === preSelecionado)) sel.value = preSelecionado;
+      sel.addEventListener('change', () => carregarCliente(sel.value));
+      await carregarCliente(sel.value);
+    }
+
+    async function carregarCliente(id) {
+      CLIENTE_ATUAL = id;
+      document.getElementById('conteudoCliente').style.display = 'block';
+      document.getElementById('btnLink').disabled = false;
+      limparForm();
+      REGISTROS = await api('/api/faturamento/' + id);
+      renderHistorico();
+      renderGraficos();
+    }
+
+    function renderHistorico() {
+      const linhas = REGISTROS.map(r => {
+        const dif = (r.faturamento ?? 0) - (r.meta ?? 0);
+        const temAmbos = r.faturamento != null && r.meta != null;
+        return `
+        <div class="linha clicavel" style="grid-template-columns: 1.2fr 1.5fr 1.5fr 1.5fr 1.3fr .8fr" onclick="editarMes('${r.mes}')">
+          <div><b>${nomeMes(r.mes)}</b></div>
+          <div>${fmt(r.meta)}</div>
+          <div>${fmt(r.faturamento)}</div>
+          <div style="color:${!temAmbos ? 'var(--texto-suave)' : (dif >= 0 ? 'var(--verde)' : 'var(--vermelho)')}">${temAmbos ? (dif >= 0 ? '+' : '') + fmt(dif) : '—'}</div>
+          <div>${fmt(r.ticketMedio)}</div>
+          <div>✏️</div>
+        </div>`;
+      }).join('');
+      document.getElementById('tabelaHistorico').innerHTML = `
+        <div class="linha cabecalho" style="grid-template-columns: 1.2fr 1.5fr 1.5fr 1.5fr 1.3fr .8fr">
+          <div>Mês</div><div>Meta</div><div>Faturamento</div><div>Diferença</div><div>Ticket Médio</div><div></div>
+        </div>
+        ${linhas || '<div class="vazio">Nenhum mês lançado ainda.</div>'}`;
+    }
+
+    function editarMes(mes) {
+      const r = REGISTROS.find(x => x.mes === mes);
+      if (!r) return;
+      document.getElementById('fMes').value = r.mes;
+      document.getElementById('fMeta').value = r.meta ?? '';
+      document.getElementById('fFaturamento').value = r.faturamento ?? '';
+      document.getElementById('fTicket').value = r.ticketMedio ?? '';
+      atualizarDiferenca();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function limparForm() {
+      document.getElementById('formFat').reset();
+      document.getElementById('erroForm').textContent = '';
+      atualizarDiferenca();
+    }
+
+    function atualizarDiferenca() {
+      const meta = document.getElementById('fMeta').value;
+      const fat = document.getElementById('fFaturamento').value;
+      const el = document.getElementById('fDiferenca');
+      if (meta === '' || fat === '') { el.textContent = '—'; el.style.color = 'var(--texto-suave)'; return; }
+      const dif = Number(fat) - Number(meta);
+      el.textContent = (dif >= 0 ? '+ ' : '- ') + fmt(Math.abs(dif));
+      el.style.color = dif >= 0 ? 'var(--verde)' : 'var(--vermelho)';
+    }
+    function renderGraficos() {
+      const meses = REGISTROS.map(r => nomeMes(r.mes));
+      const meta = REGISTROS.map(r => r.meta);
+      const fat = REGISTROS.map(r => r.faturamento);
+      const ticket = REGISTROS.map(r => r.ticketMedio);
+      const gridColor = 'rgba(255,255,255,.08)';
+      const tickColor = getComputedStyle(document.documentElement).getPropertyValue('--texto-suave') || '#9a9aa8';
+
+      if (chBar) chBar.destroy();
+      if (chLine) chLine.destroy();
+
+      chBar = new Chart(document.getElementById('chBar'), {
+        type: 'bar',
+        data: { labels: meses, datasets: [
+          { label: 'Meta', data: meta, backgroundColor: 'rgba(196,151,59,.7)', borderRadius: 4 },
+          { label: 'Faturamento', data: fat, backgroundColor: 'rgba(233,30,140,.7)', borderRadius: 4 },
+        ] },
+        options: { responsive: true, plugins: { legend: { labels: { color: tickColor } } },
+          scales: { x: { ticks: { color: tickColor }, grid: { display: false } }, y: { ticks: { color: tickColor }, grid: { color: gridColor } } } }
+      });
+      chLine = new Chart(document.getElementById('chLine'), {
+        type: 'line',
+        data: { labels: meses, datasets: [
+          { label: 'Ticket Médio', data: ticket, borderColor: '#C4973B', backgroundColor: 'rgba(196,151,59,.15)', fill: true, tension: .3, spanGaps: true, pointBackgroundColor: '#C4973B' },
+        ] },
+        options: { responsive: true, plugins: { legend: { display: false } },
+          scales: { x: { ticks: { color: tickColor }, grid: { display: false } }, y: { ticks: { color: tickColor }, grid: { color: gridColor } } } }
+      });
+    }
+
+    function copiarLink() {
+      if (!CLIENTE_ATUAL) return;
+      const url = `${location.origin}/faturamento.html?cliente=${CLIENTE_ATUAL}`;
+      navigator.clipboard?.writeText(url).then(() => {
+        const btn = document.getElementById('btnLink');
+        const original = btn.textContent;
+        btn.textContent = '✅ Link copiado!';
+        setTimeout(() => { btn.textContent = original; }, 1800);
+      }).catch(() => alert(url));
+    }
+
+    document.getElementById('fMeta').addEventListener('input', atualizarDiferenca);
+    document.getElementById('fFaturamento').addEventListener('input', atualizarDiferenca);
+
+    document.getElementById('formFat').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const erro = document.getElementById('erroForm');
+      erro.textContent = '';
+      try {
+        await api('/api/faturamento', { method: 'POST', body: {
+          clienteId: CLIENTE_ATUAL,
+          mes: document.getElementById('fMes').value,
+          meta: document.getElementById('fMeta').value,
+          faturamento: document.getElementById('fFaturamento').value,
+          ticketMedio: document.getElementById('fTicket').value,
+        } });
+        limparForm();
+        REGISTROS = await api('/api/faturamento/' + CLIENTE_ATUAL);
+        renderHistorico();
+        renderGraficos();
+      } catch (err) {
+        erro.textContent = err.message || 'Erro ao salvar';
+      }
+    });
+
+    (async () => {
+      const user = await montarSidebar('faturamento.html');
+      if (user.papel !== 'admin' && user.funcao !== 'atendimento') {
+        document.querySelector('.conteudo').innerHTML = '<div class="vazio">Você não tem acesso a esta página.</div>';
+        return;
+      }
+      await carregarClientes();
+    })();
+  </script>
+</body>
+</html>
