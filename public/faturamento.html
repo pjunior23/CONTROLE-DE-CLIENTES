@@ -99,7 +99,7 @@
       const params = new URLSearchParams(location.search);
       const preSelecionadoId = params.get('cliente');
       const clienteInicial = (preSelecionadoId && CLIENTES.find(c => c.id === preSelecionadoId)) || CLIENTES[0];
-      input.value = clienteInicial.nome;
+      input.value = '';
 
       input.addEventListener('input', selecionarPorNomeDigitado);
       input.addEventListener('change', selecionarPorNomeDigitado);
