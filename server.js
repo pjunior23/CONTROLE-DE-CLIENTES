@@ -723,10 +723,10 @@ app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, (req, res) => {
   const pessoas = montarPessoas(clientes);
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename="relatorio-carga-por-pessoa.pdf"');
+  res.setHeader('Content-Disposition', 'attachment; filename="relatorio-produtividade-por-pessoa.pdf"');
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   doc.pipe(res);
-  let y = cabecalhoPDF(doc, 'Carga de Trabalho por Pessoa', `${pessoas.length} pessoas com clientes ativos — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
+  let y = cabecalhoPDF(doc, 'Produtividade por Pessoa', `${pessoas.length} pessoas com clientes ativos — gerado em ${fmtDataBR(new Date().toISOString().slice(0, 10))}`);
 
   if (pessoas.length) {
     y = tabelaPDF(doc, y, ['Pessoa', 'Clientes ativos'], pessoas.map(p => [p.nome, String(p.total)]), [400, 100]);

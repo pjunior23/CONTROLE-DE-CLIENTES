@@ -44,7 +44,7 @@ No serviço → aba **Variables**, crie:
 
 ## 4. Volume para os dados (essencial!)
 
-Sem volume, **os JSONs são apagados a cada deploy** (o container é recriado do zero). No serviço: **Settings → Volumes → Add Volume**, monte em `/data`. Com `DATA_DIR=/data`, os arquivos `usuarios.json`, `clientes.json` e `equipe.json` passam a viver no volume e sobrevivem aos deploys.
+Sem volume, **os JSONs são apagados a cada deploy** (o container é recriado do zero). No serviço: **Settings → Volumes → Add Volume**, monte em `/data`. Com `DATA_DIR=/data`, os arquivos `usuarios.json`, `clientes.json`, `equipe.json` e `faturamento.json` passam a viver no volume e sobrevivem aos deploys.
 
 ## 5. Primeiro acesso
 
@@ -54,13 +54,27 @@ Abra a URL gerada pelo Railway (Settings → Networking → Generate Domain). En
 
 Localmente: exporte a aba do Google Sheets como CSV, rode `node scripts/import-csv.js planilha.csv` e revise `data/clientes.json`. Para levar ao Railway, a forma mais simples é copiar o conteúdo dos JSONs gerados para dentro do volume usando o console do Railway (ou refazer a importação direto lá). Alternativa prática: rodar o app localmente já com os dados importados, conferir tudo, e só então subir os arquivos.
 
+## 6.1 Outros scripts de importação/manutenção
+
+Rodados do mesmo jeito, direto no **Console do Railway** (aba do serviço no ar) ou localmente:
+
+```
+npm run import-faturamento     # carrega o histórico de faturamento de uma planilha CSV pro data/faturamento.json
+npm run import-desligamento    # cadastra os clientes desligados (lista fixa no script) já com data de saída
+npm run corrigir-duplicados    # encontra clientes com nome repetido (ex.: rodou a importação 2x sem querer) e mescla num só
+```
+
+Rode cada um **uma vez só**. Se por algum motivo precisar rodar de novo (por exemplo, o Console caiu no meio ou deu erro de "module not found" porque o deploy ainda não tinha terminado), rode `corrigir-duplicados` logo em seguida — ele varre o cadastro inteiro, junta qualquer cliente duplicado, herda a data de saída e migra os lançamentos de faturamento pro registro que ficou, sem perder nada.
+
 ## 7. Operação do dia a dia
 
 **Relogin após deploy**: as sessões ficam em memória — a cada redeploy todo mundo é deslogado e precisa entrar de novo. Avise a equipe.
 
 **Backup**: os JSONs em `/data` são os dados de produção. Baixe cópias periodicamente (semanal, no mínimo) e guarde em local seguro. Quando migrar para Supabase, isso deixa de ser necessário.
 
-**Reset de senha**: o admin edita o usuário em Configurações e define uma nova senha. Não existe "esqueci minha senha" por e-mail nesta fase.
+**Reset de senha**: o admin edita o usuário em Configurações e define uma nova senha. Não existe "esqueci minha senha" por e-mail nesta fase (fica no backlog).
+
+**Faturamento**: acessível por Admin e por quem tem a função "Estrategista de Atendimento" vinculada (e só dos clientes onde é o responsável de Atendimento). Os lançamentos mensais (meta, faturamento, ticket médio) são digitados manualmente — não há integração automática com nenhuma plataforma de pagamento ainda.
 
 **Admin trancado para fora**: se perder a senha do único admin, apague o `usuarios.json` do volume e reinicie o serviço — o admin inicial é recriado a partir das variáveis `ADMIN_LOGIN`/`ADMIN_SENHA` (os demais usuários precisarão ser recriados; clientes e equipe não são afetados).
 
