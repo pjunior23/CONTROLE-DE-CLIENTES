@@ -19,7 +19,8 @@
           <div class="subtitulo" style="margin-bottom:0">Meta, faturamento real e ticket médio por mês</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select id="fCliente" style="min-width:220px"></select>
+          <input type="text" id="fClienteBusca" list="listaClientes" placeholder="🔍 Buscar cliente..." autocomplete="off" style="min-width:240px">
+          <datalist id="listaClientes"></datalist>
           <button class="btn mini" id="btnLink" onclick="copiarLink()" disabled>🔗 Copiar link do cliente</button>
           <button class="btn mini ouro" id="btnPdfCliente" onclick="baixarPdfCliente()" disabled>📄 Baixar PDF do cliente</button>
         </div>
@@ -87,17 +88,30 @@
 
     async function carregarClientes() {
       CLIENTES = await api('/api/faturamento/clientes');
-      const sel = document.getElementById('fCliente');
+      const input = document.getElementById('fClienteBusca');
+      const datalist = document.getElementById('listaClientes');
       if (!CLIENTES.length) {
         document.getElementById('semAcesso').style.display = 'block';
         return;
       }
-      sel.innerHTML = CLIENTES.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+      datalist.innerHTML = CLIENTES.map(c => `<option value="${esc(c.nome)}">`).join('');
+
       const params = new URLSearchParams(location.search);
-      const preSelecionado = params.get('cliente');
-      if (preSelecionado && CLIENTES.some(c => c.id === preSelecionado)) sel.value = preSelecionado;
-      sel.addEventListener('change', () => carregarCliente(sel.value));
-      await carregarCliente(sel.value);
+      const preSelecionadoId = params.get('cliente');
+      const clienteInicial = (preSelecionadoId && CLIENTES.find(c => c.id === preSelecionadoId)) || CLIENTES[0];
+      input.value = clienteInicial.nome;
+
+      input.addEventListener('input', selecionarPorNomeDigitado);
+      input.addEventListener('change', selecionarPorNomeDigitado);
+      await carregarCliente(clienteInicial.id);
+    }
+
+    // Assim que o nome digitado bater certinho com um cliente da lista (escolhido
+    // no autocomplete ou digitado por completo), já carrega os dados dele
+    function selecionarPorNomeDigitado() {
+      const input = document.getElementById('fClienteBusca');
+      const c = CLIENTES.find(x => x.nome === input.value);
+      if (c && c.id !== CLIENTE_ATUAL) carregarCliente(c.id);
     }
 
     async function carregarCliente(id) {
