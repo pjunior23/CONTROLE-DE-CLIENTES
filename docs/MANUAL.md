@@ -30,7 +30,9 @@ A versão digital da planilha. Cada linha mostra o cliente, o status, os princip
 
 **Buscar, filtrar e ordenar**: use a caixa 🔍 para buscar pelo nome, o filtro de status, o filtro por marca (Fast Escova, Fast Spa, Mega Studio...) e o filtro por pessoa (ex.: escolha "Marcela" para ver só os clientes dela). Tem também um seletor de **ordem**: alfabética, saída mais recente primeiro ou saída mais antiga primeiro — útil pra revisar o histórico de quem saiu.
 
-**Cadastrar ou editar (só admin)**: clique em **➕ Novo Cliente** ou em qualquer linha da tabela. No formulário você define nome (padrão: marca + unidade, ex.: "Fast Escova Aclimação"), marca, status, o responsável de cada função (Estrategista de Atendimento, Estrategista de Planejamento, Copywriter, Apoio, Consultor/Gerente, Social Media e Edição de Vídeos — use "EQUIPE PRÓPRIA" quando o próprio cliente cuida), as datas de inauguração, saída, aniversário da unidade e entrada na carteira, o acesso de tráfego e observações. Os nomes dos dropdowns vêm do cadastro de equipe em Configurações. Também dá pra chegar direto num cliente clicando na linha dele na tela **Por Pessoa**.
+**Cadastrar ou editar (só admin)**: clique em **➕ Novo Cliente** ou em qualquer linha da tabela. No formulário você define nome (padrão: marca + unidade, ex.: "Fast Escova Aclimação"), marca, status, o responsável de cada função (Estrategista de Atendimento, Estrategista de Planejamento, Copywriter, Apoio, Consultor/Gerente, Social Media e Edição de Vídeos), as datas de inauguração, saída, aniversário da unidade e entrada na carteira, quantas **artes semanais** o contrato inclui, o acesso de tráfego e observações. Nos campos de Apoio, Consultor, Social Media e Edição de Vídeos tem duas opções especiais: **"EQUIPE PRÓPRIA"** quando é o time do próprio cliente que cuida, e **"NÃO TEM"** quando esse serviço simplesmente não faz parte do contrato — nos dois casos não vira pendência no dashboard. Os nomes dos dropdowns vêm do cadastro de equipe em Configurações. Também dá pra chegar direto num cliente clicando na linha dele na tela **Por Pessoa**.
+
+**Coluna Serviços**: mostra de relance o que a agência faz por aquele cliente — 📱 Social Media e 🎬 Edição de Vídeo aparecem coloridos quando é a agência que executa, com 🏠 quando é a equipe própria do cliente, e 🎨 com a quantidade de artes semanais contratadas. Serviço marcado como "NÃO TEM" simplesmente não aparece.
 
 **Excluir (só admin)**: dentro da edição, botão 🗑️ Excluir. O sistema pede confirmação — a exclusão não pode ser desfeita.
 
@@ -112,3 +114,11 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 **Modo mobile**: o sistema roda bem no celular, com menu em gaveta lateral.
 
 **Olho de mostrar/ocultar senha**: nos campos de senha do login e das Configurações.
+
+## Novidades da versão 4
+
+**Serviços contratados**: os campos de Apoio, Consultor, Social Media e Edição de Vídeos ganharam a opção "NÃO TEM", além da já existente "EQUIPE PRÓPRIA" — assim dá pra registrar direito quando um serviço não é feito pela agência, sem gerar pendência à toa.
+
+**Artes semanais**: novo campo no cadastro do cliente pra guardar quantas artes por semana o contrato inclui.
+
+**Coluna Serviços em Clientes**: etiquetas rápidas mostrando o que a agência faz por cada cliente, direto na listagem.

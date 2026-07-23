@@ -157,6 +157,10 @@ app.get('/api/clientes', requireAuth, (req, res) => {
 function validarCliente(body) {
   if (!body.nome || !String(body.nome).trim()) return 'Nome é obrigatório';
   if (body.status && !STATUS_VALIDOS.includes(body.status)) return 'Status inválido';
+  if (body.artesSemanais !== undefined && body.artesSemanais !== null && body.artesSemanais !== '') {
+    const n = Number(body.artesSemanais);
+    if (!Number.isFinite(n) || n < 0) return 'Artes semanais precisa ser um número válido (0 ou mais)';
+  }
   return null;
 }
 
@@ -175,6 +179,9 @@ function montarCliente(body, existente) {
     dataSaida: body.dataSaida ?? existente?.dataSaida ?? null,
     aniversario: body.aniversario ?? existente?.aniversario ?? null,   // aniversário da unidade
     dataEntrada: body.dataEntrada ?? existente?.dataEntrada ?? null,   // entrada na carteira
+    artesSemanais: body.artesSemanais !== undefined
+      ? (body.artesSemanais === '' || body.artesSemanais === null ? null : Number(body.artesSemanais))
+      : (existente?.artesSemanais ?? null),
     obs: String(body.obs ?? existente?.obs ?? '').trim(),
     criadoEm: existente?.criadoEm || new Date().toISOString(),
     atualizadoEm: new Date().toISOString(),

@@ -76,6 +76,12 @@
             <select id="cAcesso"><option value="sim">✅ Sim</option><option value="nao">❌ Não</option></select>
           </div>
         </div>
+        <div class="grid-2">
+          <div><label>🎨 Artes semanais <small style="color:var(--texto-suave)">(quantas por semana no contrato; deixe em branco se não tem)</small></label>
+            <input type="number" id="cArtes" min="0" step="1" placeholder="Ex.: 4">
+          </div>
+          <div></div>
+        </div>
         <label>📝 Observações</label>
         <textarea id="cObs" rows="2"></textarea>
         <div class="erro" id="modalErro"></div>
@@ -92,7 +98,26 @@
   <script>
     let CLIENTES = [], FUNCOES = [], EQUIPE = [], editandoId = null;
 
-    const grade = 'grid-template-columns: 2.2fr 1fr 1.1fr 1.1fr 1.1fr 1.1fr';
+    const grade = 'grid-template-columns: 2fr 0.9fr 1.2fr 1fr 1fr 1fr 1fr';
+
+    // Etiquetas dos serviços contratados: dourado = agência faz, cinza = equipe própria do cliente,
+    // "não tem" ou vazio = não aparece (não é serviço desse cliente)
+    function tagsServicos(c) {
+      const tags = [];
+      const add = (valor, icone, rotulo) => {
+        const v = (valor || '').trim().toUpperCase();
+        if (!v || v === 'NÃO TEM' || v === 'NAO TEM') return;
+        if (v === 'EQUIPE PRÓPRIA' || v === 'EQUIPE PROPRIA') {
+          tags.push(`<span class="tag-servico propria" title="${rotulo}: equipe própria">🏠</span>`);
+        } else {
+          tags.push(`<span class="tag-servico" title="${rotulo}: ${esc(valor)}">${icone}</span>`);
+        }
+      };
+      add(c.responsaveis?.socialMedia, '📱', 'Social media');
+      add(c.responsaveis?.edicaoVideos, '🎬', 'Edição de vídeo');
+      if (c.artesSemanais) tags.push(`<span class="tag-servico" title="Artes semanais">🎨 ${Number(c.artesSemanais)}/sem</span>`);
+      return tags.length ? tags.join('') : '<span style="color:var(--texto-suave)">—</span>';
+    }
 
     // Dropdown de responsáveis filtrado pela função do colaborador
     function opcoesEquipe(funcaoKey, selecionado) {
@@ -103,7 +128,8 @@
         nomes.push(sel); // mantém valor atual mesmo que a pessoa tenha outra função
       }
       const especiais = [`<option value="EQUIPE PRÓPRIA" ${sel === 'EQUIPE PRÓPRIA' ? 'selected' : ''}>EQUIPE PRÓPRIA</option>`];
-      if (funcaoKey === 'consultor') {
+      // "NÃO TEM" = esse serviço não faz parte do contrato desse cliente (não vira pendência)
+      if (['consultor', 'apoio', 'socialMedia', 'edicaoVideos'].includes(funcaoKey)) {
         especiais.push(`<option value="NÃO TEM" ${sel === 'NÃO TEM' ? 'selected' : ''}>NÃO TEM</option>`);
       }
       return ['<option value="">—</option>',
@@ -145,7 +171,7 @@
         : `${filtrados.length} de ${total} clientes`;
       const podeEditar = window.USUARIO.papel === 'admin';
       document.getElementById('tabela').innerHTML = [
-        `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Consultor</div></div>`,
+        `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Serviços</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Consultor</div></div>`,
         ...filtrados.map(c => {
           const stEf = statusEfetivo(c);
           const badge = stEf === 'saiu'
@@ -155,6 +181,7 @@
           <div class="linha ${podeEditar ? 'clicavel' : ''}" style="${grade}" ${podeEditar ? `onclick="abrirModal('${c.id}')"` : ''}>
             <div style="display:flex;align-items:center;gap:10px">${logoMarcaHtml(c)}<div><b>${esc(c.nome)}</b>${c.obs ? `<br><small style="color:var(--texto-suave)">${esc(c.obs)}</small>` : ''}</div></div>
             <div>${badge}</div>
+            <div class="servicos">${tagsServicos(c)}</div>
             <div>${esc(c.responsaveis.atendimento || '—')}</div>
             <div>${esc(c.responsaveis.planejamento || '—')}</div>
             <div>${esc(c.responsaveis.copy || '—')}</div>
@@ -183,6 +210,7 @@
         MESES.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${anivM == String(i + 1).padStart(2, '0') ? 'selected' : ''}>${m}</option>`).join('');
       document.getElementById('cEntrada').value = c?.dataEntrada || '';
       document.getElementById('cAcesso').value = c?.acessoTrafego ? 'sim' : 'nao';
+      document.getElementById('cArtes').value = c?.artesSemanais ?? '';
       document.getElementById('cObs').value = c?.obs || '';
       document.getElementById('camposFuncoes').innerHTML = FUNCOES.map(f => `
         <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(f.key, c?.responsaveis?.[f.key] || '')}</select></div>`).join('');
@@ -218,6 +246,7 @@
           ? `2000-${document.getElementById('cAnivMes').value}-${document.getElementById('cAnivDia').value}`
           : null,
         dataEntrada: document.getElementById('cEntrada').value || null,
+        artesSemanais: document.getElementById('cArtes').value || null,
         obs: document.getElementById('cObs').value,
       };
       try {
