@@ -175,10 +175,12 @@ function montarCliente(body, existente) {
     status: body.status ?? existente?.status ?? 'ativo',
     responsaveis: resp,
     acessoTrafego: body.acessoTrafego ?? existente?.acessoTrafego ?? false,
-    dataInauguracao: body.dataInauguracao ?? existente?.dataInauguracao ?? null, // "AAAA-MM-DD"
-    dataSaida: body.dataSaida ?? existente?.dataSaida ?? null,
-    aniversario: body.aniversario ?? existente?.aniversario ?? null,   // aniversário da unidade
-    dataEntrada: body.dataEntrada ?? existente?.dataEntrada ?? null,   // entrada na carteira
+    // "!== undefined" (em vez de "??") para distinguir "campo não veio no body" de
+    // "campo veio zerado de propósito" (null) — senão nunca dá pra limpar uma data já salva
+    dataInauguracao: body.dataInauguracao !== undefined ? body.dataInauguracao : (existente?.dataInauguracao ?? null), // "AAAA-MM-DD"
+    dataSaida: body.dataSaida !== undefined ? body.dataSaida : (existente?.dataSaida ?? null),
+    aniversario: body.aniversario !== undefined ? body.aniversario : (existente?.aniversario ?? null),   // aniversário da unidade
+    dataEntrada: body.dataEntrada !== undefined ? body.dataEntrada : (existente?.dataEntrada ?? null),   // entrada na carteira
     artesSemanais: body.artesSemanais !== undefined
       ? (body.artesSemanais === '' || body.artesSemanais === null ? null : Number(body.artesSemanais))
       : (existente?.artesSemanais ?? null),
