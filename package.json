@@ -8,7 +8,8 @@
     "import": "node scripts/import-csv.js",
     "import-faturamento": "node scripts/import-faturamento.js",
     "import-desligamento": "node scripts/import-desligamento.js",
-    "corrigir-duplicados": "node scripts/corrigir-duplicados.js"
+    "corrigir-duplicados": "node scripts/corrigir-duplicados.js",
+    "import-faturamento-araguaina": "node scripts/import-faturamento-araguaina.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
