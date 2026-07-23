@@ -51,8 +51,10 @@ const LOTE = [
     'Vila Leopoldina', 'Vila Mariana', 'Vila Mascote', 'Verbo Divino']
     .map(nome => ({ nome, sm: true, video: true, artes: 4 })),
   // Sem Social Media (não fazemos artes nem vídeos)
+  // "Alto de Pinheiro" ficou de fora de propósito: já tem Social Media (Rafael) e
+  // artes semanais cadastrados como bônus — o Juninho confirmou que é exceção, não mexer.
   ...['Alfenas', 'Bosque da Saúde', 'Gama', 'Guará', 'Shopping Light', 'Taguatinga',
-    'Vergueiro - Alto do Ipiranga', 'Vila Formosa', 'Alto de Pinheiro']
+    'Vergueiro - Alto do Ipiranga', 'Vila Formosa']
     .map(nome => ({ nome, sm: false, video: false, artes: null })),
 ];
 
