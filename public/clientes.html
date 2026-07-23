@@ -76,12 +76,6 @@
             <select id="cAcesso"><option value="sim">✅ Sim</option><option value="nao">❌ Não</option></select>
           </div>
         </div>
-        <div class="grid-2">
-          <div><label>🎨 Artes semanais <small style="color:var(--texto-suave)">(quantas por semana no contrato; deixe em branco se não tem)</small></label>
-            <input type="number" id="cArtes" min="0" step="1" placeholder="Ex.: 4">
-          </div>
-          <div></div>
-        </div>
         <label>📝 Observações</label>
         <textarea id="cObs" rows="2"></textarea>
         <div class="erro" id="modalErro"></div>
@@ -210,10 +204,11 @@
         MESES.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${anivM == String(i + 1).padStart(2, '0') ? 'selected' : ''}>${m}</option>`).join('');
       document.getElementById('cEntrada').value = c?.dataEntrada || '';
       document.getElementById('cAcesso').value = c?.acessoTrafego ? 'sim' : 'nao';
-      document.getElementById('cArtes').value = c?.artesSemanais ?? '';
       document.getElementById('cObs').value = c?.obs || '';
       document.getElementById('camposFuncoes').innerHTML = FUNCOES.map(f => `
-        <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(f.key, c?.responsaveis?.[f.key] || '')}</select></div>`).join('');
+        <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(f.key, c?.responsaveis?.[f.key] || '')}</select></div>`).join('')
+        + `<div><label>🎨 Artes semanais <small style="color:var(--texto-suave)">(por semana no contrato; vazio se não tem)</small></label><input type="number" id="cArtes" min="0" step="1" placeholder="Ex.: 4"></div>`;
+      document.getElementById('cArtes').value = c?.artesSemanais ?? '';
       document.getElementById('btnExcluir').style.display = c ? 'inline-block' : 'none';
       document.getElementById('modalErro').textContent = '';
       document.getElementById('modalFundo').classList.add('aberto');
