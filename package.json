@@ -9,7 +9,8 @@
     "import-faturamento": "node scripts/import-faturamento.js",
     "import-desligamento": "node scripts/import-desligamento.js",
     "corrigir-duplicados": "node scripts/corrigir-duplicados.js",
-    "import-faturamento-araguaina": "node scripts/import-faturamento-araguaina.js"
+    "import-faturamento-araguaina": "node scripts/import-faturamento-araguaina.js",
+    "atualizar-servicos": "node scripts/atualizar-servicos.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {
