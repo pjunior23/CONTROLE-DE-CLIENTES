@@ -56,7 +56,29 @@ const LOTE = [
   ...['Alfenas', 'Bosque da Saúde', 'Gama', 'Guará', 'Shopping Light', 'Taguatinga',
     'Vergueiro - Alto do Ipiranga', 'Vila Formosa']
     .map(nome => ({ nome, sm: false, video: false, artes: null })),
+
+  // --- Carteira Juliana ---
+  // Com Social Media (fazemos artes e vídeos)
+  ...['Barra da Tijuca', 'Bauru', 'Belenzinho', 'Chácara Klabin', 'Gruta - Maceio',
+    'Hortolândia', 'Jardim Planalto', 'Jatiúca', 'Mooca Tobias Barreto', 'Pinheiros',
+    'Ponta Verde - Maceio', 'Vila Prudente', 'Vila Sonia', 'Spa Ananindeua', 'Spa São José do Rio Preto']
+    .map(nome => ({ nome, sm: true, video: true, artes: 4 })),
+  // Apenas artes estáticas (sem social media, sem vídeo)
+  ...['Spa Moema']
+    .map(nome => ({ nome, sm: false, video: false, artes: 4 })),
+  // Sem Social Media (não fazemos artes nem vídeos) — anotações tipo "(ainda não
+  // inaugurou)" e "(Uberlândia)" removidas, servem só de contexto pro Juninho
+  ...['Campo Grande SP', 'Gramado', 'Karaiba', 'Limão', 'Martins', 'Mossoró',
+    'Planalto Paulista', 'Pouso Alegre', 'Ubatuba', 'Spa Bueno', 'Spa Marista', 'Spa Teresina',
+    'Spa Higienópolis', 'Spa Rio Verde', 'Mega Studio Vila Mariana', 'Mega Studio Alamenda Santos',
+    'Mega Studio Vila Leopoldina', 'Mega Studio Lapa', 'Mega Studio Moema', 'Mega Studio Normandia',
+    'Mega Studio Matriz']
+    .map(nome => ({ nome, sm: false, video: false, artes: null })),
 ];
+
+// Blacklist de segurança: "Alto de Pinheiro" é exceção conhecida (bônus combinado à parte),
+// nunca deixa esse nome entrar como candidato mesmo se um alvo genérico (tipo "Pinheiros") bater nele
+const NUNCA_TOCAR = ['ALTO DE PINHEIR'];
 
 const relatorio = { aplicados: [], conflitos: [], ambiguos: [], naoEncontrados: [] };
 
@@ -90,7 +112,13 @@ function ajustarCampo(cliente, chave, deveTer, rotulo) {
 
 for (const item of LOTE) {
   const alvo = limpar(item.nome);
-  const candidatos = clientes.filter(c => limpar(c.nome).includes(alvo));
+  // Nenhum item do lote tem como alvo de verdade um nome da lista NUNCA_TOCAR,
+  // então qualquer candidato que caia nela é sempre falso-positivo — exclui direto
+  const candidatos = clientes.filter(c => {
+    const nomeLimpo = limpar(c.nome);
+    if (NUNCA_TOCAR.some(bloqueado => nomeLimpo.includes(bloqueado))) return false;
+    return nomeLimpo.includes(alvo);
+  });
 
   if (candidatos.length === 0) { relatorio.naoEncontrados.push(item.nome); continue; }
   if (candidatos.length > 1) {

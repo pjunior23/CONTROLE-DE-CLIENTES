@@ -229,22 +229,31 @@ app.delete('/api/clientes/:id', requireAdmin, (req, res) => {
   res.json({ ok: true, removido: removido.nome });
 });
 
+// "Hoje" sempre no fuso de Brasília, não importa o fuso do servidor (Railway roda em
+// UTC). Brasil não tem mais horário de verão desde 2019, então o deslocamento (-3h) é
+// sempre fixo — sem isso, perto das 21h em diante (já é "amanhã" em UTC), o app
+// adiantava aniversários, inaugurações e a virada de status em quase 3 horas.
+function hojeBR() {
+  const deslocado = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  return new Date(Date.UTC(deslocado.getUTCFullYear(), deslocado.getUTCMonth(), deslocado.getUTCDate()));
+}
+
 // ------------------------------------------------------------
 // Alertas (calculados na hora, sobre os clientes visíveis)
 // ------------------------------------------------------------
 app.get('/api/alertas', requireAuth, (req, res) => {
   const dias = parseInt(process.env.ALERTA_DIAS_INAUGURACAO || '15', 10);
   const diasAniv = parseInt(process.env.ALERTA_DIAS_ANIVERSARIO || '30', 10);
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const limite = new Date(hoje); limite.setDate(limite.getDate() + dias);
+  const hoje = hojeBR();
+  const limite = new Date(hoje.getTime() + dias * 86400000);
   const clientes = clientesVisiveis(req.session.user);
   const alertas = { inauguracoes: [], aniversarios: [], saidas: [], pendencias: [] };
 
   for (const c of clientes) {
     // Cliente que já saiu (data de saída no passado) não gera alertas
-    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) continue;
+    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00Z') < hoje) continue;
     if (c.dataInauguracao) {
-      const d = new Date(c.dataInauguracao + 'T00:00:00');
+      const d = new Date(c.dataInauguracao + 'T00:00:00Z');
       if (d >= hoje && d <= limite) {
         alertas.inauguracoes.push({ cliente: c.nome, data: c.dataInauguracao, id: c.id });
       }
@@ -253,11 +262,16 @@ app.get('/api/alertas', requireAuth, (req, res) => {
       // Aniversário só conta pra quem já inaugurou de fato (senão é a mesma data da inauguração futura)
       // Aniversário se repete todo ano: calcula a próxima ocorrência (mês/dia)
       const [, m, d] = c.aniversario.split('-').map(Number);
-      let prox = new Date(hoje.getFullYear(), m - 1, d);
-      if (prox < hoje) prox = new Date(hoje.getFullYear() + 1, m - 1, d);
+      let prox = new Date(Date.UTC(hoje.getUTCFullYear(), m - 1, d));
+      if (prox < hoje) prox = new Date(Date.UTC(hoje.getUTCFullYear() + 1, m - 1, d));
+      // O dia exato da inauguração não é "aniversário" ainda — é o próprio lançamento.
+      // O primeiro aniversário de verdade só conta a partir do ano seguinte.
+      if (c.dataInauguracao && prox.toISOString().slice(0, 10) === c.dataInauguracao) {
+        prox = new Date(Date.UTC(prox.getUTCFullYear() + 1, m - 1, d));
+      }
       const diff = Math.round((prox - hoje) / 86400000);
       if (diff <= diasAniv) {
-        const iso = `${prox.getFullYear()}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const iso = `${prox.getUTCFullYear()}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         alertas.aniversarios.push({ cliente: c.nome, data: iso, emDias: diff, id: c.id });
       }
     }
@@ -278,11 +292,11 @@ app.get('/api/alertas', requireAuth, (req, res) => {
 
 // Status efetivo calculado pelas datas (mesma regra do frontend)
 function statusEfetivoSrv(c) {
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) return 'saiu';
+  const hoje = hojeBR();
+  if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00Z') < hoje) return 'saiu';
   if (c.dataSaida) return 'saindo'; // data de saída futura → Saindo automático
   if (c.status === 'saindo') return 'saindo';
-  if (c.dataInauguracao && new Date(c.dataInauguracao + 'T00:00:00') > hoje) return 'prelancamento';
+  if (c.dataInauguracao && new Date(c.dataInauguracao + 'T00:00:00Z') > hoje) return 'prelancamento';
   if (c.status === 'prelancamento') return 'ativo';
   return c.status;
 }
@@ -292,9 +306,9 @@ function statusEfetivoSrv(c) {
 // ------------------------------------------------------------
 function montarPessoas(clientes) {
   const mapa = {};
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const hoje = hojeBR();
   for (const c of clientes) {
-    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00') < hoje) continue; // já saiu
+    if (c.dataSaida && new Date(c.dataSaida + 'T00:00:00Z') < hoje) continue; // já saiu
     for (const f of FUNCOES) {
       if (f.key === 'consultor') continue; // Consultor/Gerente não entra na Visão por Pessoa
       const bruto = (c.responsaveis?.[f.key] || '').trim();

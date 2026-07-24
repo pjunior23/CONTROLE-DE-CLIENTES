@@ -130,6 +130,8 @@ O `import-desligamento` e o `corrigir-duplicados` **alteram `data/clientes.json`
 
 ## Avisos importantes
 
+O servidor calcula "hoje" sempre no fuso de Brasília (`hojeBR()` em `server.js`), independente do fuso do container (o Railway roda em UTC por padrão) — sem isso, alertas de aniversário/inauguração e a virada automática de status (pré-lançamento → ativo, ativo → saiu) adiantavam quase 3 horas.
+
 Sessões ficam em memória: **todo redeploy derruba os logins** — a equipe precisa entrar de novo. Os JSONs em `data/` (incluindo `faturamento.json`) são os dados de produção: configure um **Volume no Railway** e faça **backup regular** (ver `docs/DEPLOY.md`). Nunca commite `.env` nem `data/`. O layout é responsivo: funciona no celular, com menu em gaveta (☰) no lugar da barra lateral fixa.
 
 ## Pendências conhecidas
