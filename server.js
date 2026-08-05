@@ -1,6 +1,6 @@
 // ============================================================
 // CONTROLE DE CARTEIRA — Agência de Tráfego Pago
-// Backend único: Express + sessões + JSON local
+// Backend único: Express + sessões + banco Postgres (Supabase)
 // Preparado para multi-tenant futuro (campo agencyId em tudo)
 // ============================================================
 require('dotenv').config();
@@ -11,9 +11,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
+const { db, ensureSchema } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Usada só pela migração automática abaixo (dados antigos em JSON, ex.: no Volume do Railway)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 // Tenant padrão — quando virar SaaS, cada agência terá o seu
@@ -32,59 +34,61 @@ const FUNCOES = [
 
 const STATUS_VALIDOS = ['ativo', 'prelancamento', 'saindo'];
 
-// ------------------------------------------------------------
-// Persistência simples em JSON
-// ------------------------------------------------------------
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+// Envolve uma rota async: se der erro, cai aqui em vez de derrubar o servidor
+function rota(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch((err) => {
+    console.error('Erro numa rota:', err);
+    res.status(500).json({ erro: 'Erro interno. Tente novamente em instantes.' });
+  });
 }
 
-function loadJSON(file, fallback) {
-  ensureDataDir();
-  const p = path.join(DATA_DIR, file);
-  if (!fs.existsSync(p)) return fallback;
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
-  } catch (e) {
-    console.error(`Erro lendo ${file}:`, e.message);
-    return fallback;
+// Migração automática (uma vez só): se o banco Postgres estiver vazio E ainda existir
+// o arquivo clientes.json antigo (ex.: no Volume do Railway), copia tudo pro banco antes
+// de começar a servir. Depois da primeira vez o banco deixa de estar vazio, então isso
+// nunca roda de novo nem por engano.
+async function migrarSeNecessario() {
+  const clientesAtuais = await db.clientes();
+  if (clientesAtuais.length > 0) return; // banco já tem dados — não mexe em nada
+  const arquivoClientes = path.join(DATA_DIR, 'clientes.json');
+  if (!fs.existsSync(arquivoClientes)) return; // banco novo mesmo, sem JSON antigo pra migrar
+
+  console.log('📦 Banco vazio + dados antigos em JSON encontrados — migrando automaticamente...');
+  function ler(nome) {
+    const p = path.join(DATA_DIR, nome);
+    if (!fs.existsSync(p)) return [];
+    try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {
+      console.error(`Erro lendo ${nome} na migração automática:`, e.message);
+      return [];
+    }
   }
+  const usuarios = ler('usuarios.json');
+  const equipe = ler('equipe.json');
+  const clientes = ler('clientes.json');
+  const faturamento = ler('faturamento.json');
+  if (usuarios.length) await db.saveUsuarios(usuarios);
+  if (equipe.length) await db.saveEquipe(equipe);
+  if (clientes.length) await db.saveClientes(clientes);
+  if (faturamento.length) await db.saveFaturamento(faturamento);
+  console.log(`✅ Migração automática concluída: ${usuarios.length} usuário(s), ${clientes.length} cliente(s), ${equipe.length} membro(s) de equipe, ${faturamento.length} lançamento(s) de faturamento.`);
 }
-
-function saveJSON(file, data) {
-  ensureDataDir();
-  const p = path.join(DATA_DIR, file);
-  const tmp = p + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tmp, p); // gravação atômica: nunca corrompe o arquivo
-}
-
-const db = {
-  usuarios: () => loadJSON('usuarios.json', []),
-  clientes: () => loadJSON('clientes.json', []),
-  equipe:   () => loadJSON('equipe.json', []),
-  saveUsuarios: (d) => saveJSON('usuarios.json', d),
-  saveClientes: (d) => saveJSON('clientes.json', d),
-  saveEquipe:   (d) => saveJSON('equipe.json', d),
-};
 
 // Primeiro uso: cria o admin inicial se não existir nenhum usuário
-function seedAdmin() {
-  const usuarios = db.usuarios();
+async function seedAdmin() {
+  const usuarios = await db.usuarios();
   if (usuarios.length === 0) {
     const login = process.env.ADMIN_LOGIN || 'admin';
     const senha = process.env.ADMIN_SENHA || 'admin123';
-    usuarios.push({
+    await db.saveUsuarios([{
       id: crypto.randomUUID(),
       agencyId: DEFAULT_AGENCY,
       login,
       senhaHash: bcrypt.hashSync(senha, 10),
       nome: 'Administrador',
       papel: 'admin',       // 'admin' | 'gestor'
+      funcao: null,
       membroNome: null,     // gestores: nome do membro da equipe correspondente
       criadoEm: new Date().toISOString(),
-    });
-    db.saveUsuarios(usuarios);
+    }]);
     console.log(`✅ Admin inicial criado (login: ${login}). TROQUE A SENHA em Configurações.`);
   }
 }
@@ -112,8 +116,8 @@ function requireAdmin(req, res, next) {
 }
 
 // Gestor enxerga apenas clientes onde o membro vinculado aparece em alguma função
-function clientesVisiveis(user) {
-  const todos = db.clientes().filter(c => c.agencyId === user.agencyId);
+async function clientesVisiveis(user) {
+  const todos = (await db.clientes()).filter(c => c.agencyId === user.agencyId);
   if (user.papel === 'admin') return todos;
   const nome = (user.membroNome || '').trim().toUpperCase();
   if (!nome) return [];
@@ -126,10 +130,11 @@ function clientesVisiveis(user) {
 // ------------------------------------------------------------
 // Autenticação
 // ------------------------------------------------------------
-app.post('/api/login', (req, res) => {
+app.post('/api/login', rota(async (req, res) => {
   const { login, senha } = req.body || {};
   if (!login || !senha) return res.status(400).json({ erro: 'Informe login e senha' });
-  const user = db.usuarios().find(u => u.login.toLowerCase() === String(login).toLowerCase());
+  const usuarios = await db.usuarios();
+  const user = usuarios.find(u => u.login.toLowerCase() === String(login).toLowerCase());
   if (!user || !bcrypt.compareSync(senha, user.senhaHash)) {
     return res.status(401).json({ erro: 'Login ou senha incorretos' });
   }
@@ -139,7 +144,7 @@ app.post('/api/login', (req, res) => {
     membroNome: user.membroNome, agencyId: user.agencyId,
   };
   res.json({ ok: true, user: req.session.user });
-});
+}));
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
@@ -150,9 +155,9 @@ app.get('/api/me', requireAuth, (req, res) => res.json(req.session.user));
 // ------------------------------------------------------------
 // Clientes
 // ------------------------------------------------------------
-app.get('/api/clientes', requireAuth, (req, res) => {
-  res.json(clientesVisiveis(req.session.user));
-});
+app.get('/api/clientes', requireAuth, rota(async (req, res) => {
+  res.json(await clientesVisiveis(req.session.user));
+}));
 
 function validarCliente(body) {
   if (!body.nome || !String(body.nome).trim()) return 'Nome é obrigatório';
@@ -196,38 +201,38 @@ function montarCliente(body, existente) {
   return cli;
 }
 
-app.post('/api/clientes', requireAdmin, (req, res) => {
+app.post('/api/clientes', requireAdmin, rota(async (req, res) => {
   const erro = validarCliente(req.body);
   if (erro) return res.status(400).json({ erro });
-  const clientes = db.clientes();
+  const clientes = await db.clientes();
   if (clientes.some(c => c.nome.toLowerCase() === req.body.nome.trim().toLowerCase() && c.agencyId === req.session.user.agencyId)) {
     return res.status(400).json({ erro: 'Já existe um cliente com esse nome' });
   }
   const novo = montarCliente(req.body, null);
   clientes.push(novo);
-  db.saveClientes(clientes);
+  await db.saveClientes(clientes);
   res.status(201).json(novo);
-});
+}));
 
-app.put('/api/clientes/:id', requireAdmin, (req, res) => {
-  const clientes = db.clientes();
+app.put('/api/clientes/:id', requireAdmin, rota(async (req, res) => {
+  const clientes = await db.clientes();
   const idx = clientes.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Cliente não encontrado' });
   const erro = validarCliente({ ...clientes[idx], ...req.body });
   if (erro) return res.status(400).json({ erro });
   clientes[idx] = montarCliente(req.body, clientes[idx]);
-  db.saveClientes(clientes);
+  await db.saveClientes(clientes);
   res.json(clientes[idx]);
-});
+}));
 
-app.delete('/api/clientes/:id', requireAdmin, (req, res) => {
-  const clientes = db.clientes();
+app.delete('/api/clientes/:id', requireAdmin, rota(async (req, res) => {
+  const clientes = await db.clientes();
   const idx = clientes.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Cliente não encontrado' });
   const [removido] = clientes.splice(idx, 1);
-  db.saveClientes(clientes);
+  await db.saveClientes(clientes);
   res.json({ ok: true, removido: removido.nome });
-});
+}));
 
 // "Hoje" sempre no fuso de Brasília, não importa o fuso do servidor (Railway roda em
 // UTC). Brasil não tem mais horário de verão desde 2019, então o deslocamento (-3h) é
@@ -241,12 +246,12 @@ function hojeBR() {
 // ------------------------------------------------------------
 // Alertas (calculados na hora, sobre os clientes visíveis)
 // ------------------------------------------------------------
-app.get('/api/alertas', requireAuth, (req, res) => {
+app.get('/api/alertas', requireAuth, rota(async (req, res) => {
   const dias = parseInt(process.env.ALERTA_DIAS_INAUGURACAO || '15', 10);
   const diasAniv = parseInt(process.env.ALERTA_DIAS_ANIVERSARIO || '30', 10);
   const hoje = hojeBR();
   const limite = new Date(hoje.getTime() + dias * 86400000);
-  const clientes = clientesVisiveis(req.session.user);
+  const clientes = await clientesVisiveis(req.session.user);
   const alertas = { inauguracoes: [], aniversarios: [], saidas: [], pendencias: [] };
 
   for (const c of clientes) {
@@ -288,7 +293,7 @@ app.get('/api/alertas', requireAuth, (req, res) => {
   alertas.inauguracoes.sort((a, b) => a.data.localeCompare(b.data));
   alertas.aniversarios.sort((a, b) => a.emDias - b.emDias);
   res.json(alertas);
-});
+}));
 
 // Status efetivo calculado pelas datas (mesma regra do frontend)
 function statusEfetivoSrv(c) {
@@ -329,65 +334,65 @@ function montarPessoas(clientes) {
     .sort((a, b) => b.total - a.total);
 }
 
-app.get('/api/pessoas', requireAuth, (req, res) => {
-  res.json(montarPessoas(clientesVisiveis(req.session.user)));
-});
+app.get('/api/pessoas', requireAuth, rota(async (req, res) => {
+  res.json(montarPessoas(await clientesVisiveis(req.session.user)));
+}));
 
 // ------------------------------------------------------------
 // Equipe (lista de membros para os dropdowns) — admin gerencia
 // ------------------------------------------------------------
-app.get('/api/equipe', requireAuth, (req, res) => {
-  res.json(db.equipe().filter(m => m.agencyId === req.session.user.agencyId));
-});
+app.get('/api/equipe', requireAuth, rota(async (req, res) => {
+  res.json((await db.equipe()).filter(m => m.agencyId === req.session.user.agencyId));
+}));
 
-app.post('/api/equipe', requireAdmin, (req, res) => {
+app.post('/api/equipe', requireAdmin, rota(async (req, res) => {
   const nome = String(req.body?.nome || '').trim();
   if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório' });
   const funcao = FUNCOES.some(f => f.key === req.body?.funcao) ? req.body.funcao : null;
-  const equipe = db.equipe();
+  const equipe = await db.equipe();
   if (equipe.some(m => m.nome.toUpperCase() === nome.toUpperCase())) {
     return res.status(400).json({ erro: 'Membro já cadastrado' });
   }
   const novo = { id: crypto.randomUUID(), agencyId: DEFAULT_AGENCY, nome, funcao };
   equipe.push(novo);
-  db.saveEquipe(equipe);
+  await db.saveEquipe(equipe);
   res.status(201).json(novo);
-});
+}));
 
-app.put('/api/equipe/:id', requireAdmin, (req, res) => {
-  const equipe = db.equipe();
+app.put('/api/equipe/:id', requireAdmin, rota(async (req, res) => {
+  const equipe = await db.equipe();
   const m = equipe.find(x => x.id === req.params.id);
   if (!m) return res.status(404).json({ erro: 'Membro não encontrado' });
   if (req.body?.nome) m.nome = String(req.body.nome).trim();
   if (req.body?.funcao !== undefined) {
     m.funcao = FUNCOES.some(f => f.key === req.body.funcao) ? req.body.funcao : null;
   }
-  db.saveEquipe(equipe);
+  await db.saveEquipe(equipe);
   res.json(m);
-});
+}));
 
-app.delete('/api/equipe/:id', requireAdmin, (req, res) => {
-  const equipe = db.equipe();
+app.delete('/api/equipe/:id', requireAdmin, rota(async (req, res) => {
+  const equipe = await db.equipe();
   const idx = equipe.findIndex(m => m.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Membro não encontrado' });
   equipe.splice(idx, 1);
-  db.saveEquipe(equipe);
+  await db.saveEquipe(equipe);
   res.json({ ok: true });
-});
+}));
 
 // ------------------------------------------------------------
 // Usuários (contas de login) — admin gerencia
 // ------------------------------------------------------------
-app.get('/api/usuarios', requireAdmin, (req, res) => {
-  res.json(db.usuarios().map(({ senhaHash, ...u }) => u));
-});
+app.get('/api/usuarios', requireAdmin, rota(async (req, res) => {
+  res.json((await db.usuarios()).map(({ senhaHash, ...u }) => u));
+}));
 
-app.post('/api/usuarios', requireAdmin, (req, res) => {
+app.post('/api/usuarios', requireAdmin, rota(async (req, res) => {
   const { login, senha, nome, papel, funcao, membroNome } = req.body || {};
   if (!login || !senha || !nome) return res.status(400).json({ erro: 'Informe login, senha e nome' });
   if (senha.length < 6) return res.status(400).json({ erro: 'Senha precisa de ao menos 6 caracteres' });
   if (!['admin', 'gestor'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
-  const usuarios = db.usuarios();
+  const usuarios = await db.usuarios();
   if (usuarios.some(u => u.login.toLowerCase() === login.toLowerCase())) {
     return res.status(400).json({ erro: 'Login já em uso' });
   }
@@ -400,13 +405,13 @@ app.post('/api/usuarios', requireAdmin, (req, res) => {
     criadoEm: new Date().toISOString(),
   };
   usuarios.push(novo);
-  db.saveUsuarios(usuarios);
+  await db.saveUsuarios(usuarios);
   const { senhaHash, ...semSenha } = novo;
   res.status(201).json(semSenha);
-});
+}));
 
-app.put('/api/usuarios/:id', requireAdmin, (req, res) => {
-  const usuarios = db.usuarios();
+app.put('/api/usuarios/:id', requireAdmin, rota(async (req, res) => {
+  const usuarios = await db.usuarios();
   const u = usuarios.find(x => x.id === req.params.id);
   if (!u) return res.status(404).json({ erro: 'Usuário não encontrado' });
   const { senha, nome, papel, funcao, membroNome } = req.body || {};
@@ -418,20 +423,20 @@ app.put('/api/usuarios/:id', requireAdmin, (req, res) => {
   if (papel && ['admin', 'gestor'].includes(papel)) u.papel = papel;
   if (funcao !== undefined) u.funcao = u.papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null;
   if (membroNome !== undefined) u.membroNome = u.papel === 'gestor' ? String(membroNome || '').trim() || null : null;
-  db.saveUsuarios(usuarios);
+  await db.saveUsuarios(usuarios);
   const { senhaHash, ...semSenha } = u;
   res.json(semSenha);
-});
+}));
 
-app.delete('/api/usuarios/:id', requireAdmin, (req, res) => {
+app.delete('/api/usuarios/:id', requireAdmin, rota(async (req, res) => {
   if (req.params.id === req.session.user.id) return res.status(400).json({ erro: 'Você não pode excluir a si mesmo' });
-  const usuarios = db.usuarios();
+  const usuarios = await db.usuarios();
   const idx = usuarios.findIndex(u => u.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Usuário não encontrado' });
   usuarios.splice(idx, 1);
-  db.saveUsuarios(usuarios);
+  await db.saveUsuarios(usuarios);
   res.json({ ok: true });
-});
+}));
 
 // ------------------------------------------------------------
 // Metadados para o frontend
@@ -443,9 +448,6 @@ app.get('/api/meta', requireAuth, (req, res) => {
 // ------------------------------------------------------------
 // Faturamento — só Admin e Estrategista de Atendimento acessam
 // ------------------------------------------------------------
-db.faturamento = () => loadJSON('faturamento.json', []);
-db.saveFaturamento = (d) => saveJSON('faturamento.json', d);
-
 function podeAcessarFaturamento(user) {
   return user.papel === 'admin' || user.funcao === 'atendimento';
 }
@@ -457,38 +459,38 @@ function requireFaturamento(req, res, next) {
 }
 
 // Clientes visíveis para faturamento: admin vê todos; atendimento só os próprios (onde é o responsável de Atendimento)
-function clientesFaturamentoVisiveis(user) {
-  if (user.papel === 'admin') return db.clientes().filter(c => c.agencyId === user.agencyId);
+async function clientesFaturamentoVisiveis(user) {
+  const todos = (await db.clientes()).filter(c => c.agencyId === user.agencyId);
+  if (user.papel === 'admin') return todos;
   const nome = (user.membroNome || '').trim().toUpperCase();
   if (!nome) return [];
-  return db.clientes().filter(c =>
-    c.agencyId === user.agencyId &&
+  return todos.filter(c =>
     (c.responsaveis?.atendimento || '').toUpperCase().split('/').map(s => s.trim()).includes(nome)
   );
 }
 
-app.get('/api/faturamento/clientes', requireFaturamento, (req, res) => {
-  const clientes = clientesFaturamentoVisiveis(req.session.user)
+app.get('/api/faturamento/clientes', requireFaturamento, rota(async (req, res) => {
+  const clientes = (await clientesFaturamentoVisiveis(req.session.user))
     .map(c => ({ id: c.id, nome: c.nome, marca: c.marca }))
     .sort((a, b) => a.nome.localeCompare(b.nome));
   res.json(clientes);
-});
+}));
 
-app.get('/api/faturamento/:clienteId', requireFaturamento, (req, res) => {
-  const visiveis = clientesFaturamentoVisiveis(req.session.user);
+app.get('/api/faturamento/:clienteId', requireFaturamento, rota(async (req, res) => {
+  const visiveis = await clientesFaturamentoVisiveis(req.session.user);
   if (!visiveis.some(c => c.id === req.params.clienteId)) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
-  const registros = db.faturamento()
+  const registros = (await db.faturamento())
     .filter(f => f.clienteId === req.params.clienteId)
     .sort((a, b) => a.mes.localeCompare(b.mes));
   res.json(registros);
-});
+}));
 
-app.post('/api/faturamento', requireFaturamento, (req, res) => {
+app.post('/api/faturamento', requireFaturamento, rota(async (req, res) => {
   const { clienteId, mes, meta, faturamento, ticketMedio } = req.body || {};
   if (!clienteId || !mes || !/^\d{4}-\d{2}$/.test(mes)) return res.status(400).json({ erro: 'Cliente e mês (AAAA-MM) são obrigatórios' });
-  const visiveis = clientesFaturamentoVisiveis(req.session.user);
+  const visiveis = await clientesFaturamentoVisiveis(req.session.user);
   if (!visiveis.some(c => c.id === clienteId)) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
-  const registros = db.faturamento();
+  const registros = await db.faturamento();
   const idx = registros.findIndex(f => f.clienteId === clienteId && f.mes === mes);
   const registro = {
     id: idx >= 0 ? registros[idx].id : crypto.randomUUID(),
@@ -501,9 +503,9 @@ app.post('/api/faturamento', requireFaturamento, (req, res) => {
     atualizadoEm: new Date().toISOString(),
   };
   if (idx >= 0) registros[idx] = registro; else registros.push(registro);
-  db.saveFaturamento(registros);
+  await db.saveFaturamento(registros);
   res.status(201).json(registro);
-});
+}));
 
 // ------------------------------------------------------------
 // Relatórios em PDF — só Admin
@@ -574,14 +576,14 @@ function cartoesPDF(doc, y, itens) {
   return y + altura + 16;
 }
 
-app.get('/api/relatorios/carteira.pdf', requireAdmin, (req, res) => {
+app.get('/api/relatorios/carteira.pdf', requireAdmin, rota(async (req, res) => {
   const mes = /^\d{4}-\d{2}$/.test(req.query.mes) ? req.query.mes : new Date().toISOString().slice(0, 7);
-  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+  const clientes = (await db.clientes()).filter(c => c.agencyId === req.session.user.agencyId);
   const ativos = clientes.filter(c => statusEfetivoSrv(c) !== 'saiu');
   const emInauguracao = ativos.filter(c => statusEfetivoSrv(c) === 'prelancamento');
   const entraram = clientes.filter(c => (c.dataEntrada || '').startsWith(mes));
   const sairam = clientes.filter(c => (c.dataSaida || '').startsWith(mes));
-  const registrosFat = db.faturamento().filter(f => f.mes === mes);
+  const registrosFat = (await db.faturamento()).filter(f => f.mes === mes);
   const somaMeta = registrosFat.reduce((s, f) => s + (f.meta || 0), 0);
   const somaFat = registrosFat.reduce((s, f) => s + (f.faturamento || 0), 0);
 
@@ -623,10 +625,10 @@ app.get('/api/relatorios/carteira.pdf', requireAdmin, (req, res) => {
   }
 
   doc.end();
-});
+}));
 
-app.get('/api/relatorios/churn.pdf', requireAdmin, (req, res) => {
-  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+app.get('/api/relatorios/churn.pdf', requireAdmin, rota(async (req, res) => {
+  const clientes = (await db.clientes()).filter(c => c.agencyId === req.session.user.agencyId);
   const saidos = clientes.filter(c => c.dataSaida);
   const porMes = {};
   saidos.forEach(c => { const mes = c.dataSaida.slice(0, 7); porMes[mes] = (porMes[mes] || 0) + 1; });
@@ -671,14 +673,14 @@ app.get('/api/relatorios/churn.pdf', requireAdmin, (req, res) => {
   }
 
   doc.end();
-});
+}));
 
-app.get('/api/relatorios/faturamento-cliente.pdf', requireFaturamento, (req, res) => {
+app.get('/api/relatorios/faturamento-cliente.pdf', requireFaturamento, rota(async (req, res) => {
   const clienteId = req.query.clienteId;
-  const cliente = clientesFaturamentoVisiveis(req.session.user).find(c => c.id === clienteId);
+  const cliente = (await clientesFaturamentoVisiveis(req.session.user)).find(c => c.id === clienteId);
   if (!cliente) return res.status(403).json({ erro: 'Sem acesso a esse cliente' });
 
-  const registros = db.faturamento()
+  const registros = (await db.faturamento())
     .filter(f => f.clienteId === clienteId)
     .sort((a, b) => a.mes.localeCompare(b.mes));
 
@@ -739,10 +741,10 @@ app.get('/api/relatorios/faturamento-cliente.pdf', requireFaturamento, (req, res
   }
 
   doc.end();
-});
+}));
 
-app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, (req, res) => {
-  const clientes = db.clientes().filter(c => c.agencyId === req.session.user.agencyId);
+app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, rota(async (req, res) => {
+  const clientes = (await db.clientes()).filter(c => c.agencyId === req.session.user.agencyId);
   const pessoas = montarPessoas(clientes);
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -758,7 +760,7 @@ app.get('/api/relatorios/carga-pessoa.pdf', requireAdmin, (req, res) => {
   }
 
   doc.end();
-});
+}));
 
 // ------------------------------------------------------------
 // Páginas estáticas (proteção: sem sessão → login)
@@ -774,5 +776,18 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.redirect('/dashboard.html'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-seedAdmin();
-app.listen(PORT, () => console.log(`🚀 Controle de Clientes rodando na porta ${PORT}`));
+// ------------------------------------------------------------
+// Início: garante o schema do banco, cria o admin se preciso, só então
+// começa a aceitar requisições
+// ------------------------------------------------------------
+(async () => {
+  try {
+    await ensureSchema();
+    await migrarSeNecessario();
+    await seedAdmin();
+    app.listen(PORT, () => console.log(`🚀 Controle de Clientes rodando na porta ${PORT}`));
+  } catch (e) {
+    console.error('❌ Não consegui conectar/preparar o banco de dados:', e.message);
+    process.exit(1);
+  }
+})();

@@ -4,18 +4,19 @@ App web de controle de clientes da carteira de uma agência de tráfego pago. Su
 
 ## Stack
 
-Node.js + Express em um único `server.js`. Frontend em HTML/CSS/JS puro (sem framework), um HTML por tela em `/public`, responsivo (desktop e mobile). Login por usuário e senha (bcryptjs) com sessões em memória (express-session). Dados em arquivos JSON locais na pasta `data/` (Supabase previsto para o futuro). Gráficos com Chart.js (CDN) e relatórios em PDF com `pdfkit`. Deploy no Railway via Dockerfile (`node:20-slim`).
+Node.js + Express em um único `server.js`. Frontend em HTML/CSS/JS puro (sem framework), um HTML por tela em `/public`, responsivo (desktop e mobile). Login por usuário e senha (bcryptjs) com sessões em memória (express-session). Dados num banco Postgres hospedado no **Supabase** (com backup automático) — acesso via `db.js` (pacote `pg`). Gráficos com Chart.js (CDN) e relatórios em PDF com `pdfkit`. Deploy no Railway via Dockerfile (`node:20-slim`).
 
 ## Estrutura de pastas
 
 ```
 controle-carteira/
-├── server.js              # Todo o backend (rotas, auth, persistência, PDFs)
+├── server.js              # Todo o backend (rotas, auth, PDFs)
+├── db.js                  # Acesso ao banco Postgres (Supabase) — schema + queries
 ├── package.json
 ├── Dockerfile
 ├── .env.example           # Modelo de variáveis (copie para .env)
 ├── .gitignore             # .env e data/ NUNCA vão para o Git
-├── data/                  # Criada automaticamente (JSON local, fora do Git)
+├── data/                  # Só usada localmente/como backup de exportação (JSON, fora do Git)
 │   ├── usuarios.json      # Contas de login (senhas com hash bcrypt)
 │   ├── clientes.json      # Carteira de clientes
 │   ├── equipe.json        # Membros da equipe (dropdowns)
@@ -24,7 +25,8 @@ controle-carteira/
 │   ├── import-csv.js            # Importa a planilha "Clientes Geral" em CSV
 │   ├── import-faturamento.js    # Importa histórico de faturamento (planilha 2026)
 │   ├── import-desligamento.js   # Cadastra clientes desligados com data de saída
-│   └── corrigir-duplicados.js   # Mescla clientes duplicados (nome repetido)
+│   ├── corrigir-duplicados.js   # Mescla clientes duplicados (nome repetido)
+│   └── migrar-supabase.js       # Copia os JSONs de data/ para o banco Postgres (roda uma vez)
 ├── docs/
 │   ├── DEPLOY.md          # Guia de deploy e operação
 │   ├── MANUAL.md          # Manual do usuário
@@ -60,7 +62,8 @@ Acesse http://localhost:3000. No primeiro boot, se não existir nenhum usuário,
 | `ADMIN_LOGIN` / `ADMIN_SENHA` | admin / admin123 | Admin criado no primeiro boot |
 | `ALERTA_DIAS_INAUGURACAO` | 15 | Antecedência do alerta de inauguração |
 | `ALERTA_DIAS_ANIVERSARIO` | 30 | Antecedência do alerta de aniversário da unidade |
-| `DATA_DIR` | ./data | Pasta dos JSONs (no Railway, aponte para o Volume) |
+| `DATABASE_URL` | — | Connection string do Postgres (Supabase). Obrigatória — sem ela o app não sobe |
+| `DATA_DIR` | ./data | Só usada pelos scripts de importação/migração (JSON local) |
 
 ## Modelo de dados
 
@@ -124,7 +127,10 @@ O script monta o nome como marca + unidade ("Fast Escova Aclimação"; marca "Ou
 npm run import-faturamento     # Importa o histórico de faturamento de uma planilha CSV
 npm run import-desligamento    # Cadastra clientes desligados (lista embutida no script) com data de saída
 npm run corrigir-duplicados    # Encontra clientes com nome repetido e mescla num só registro
+npm run migrar-supabase        # Copia os JSONs de data/ para o banco Postgres (roda uma vez só)
 ```
+
+Os scripts de importação/manutenção continuam lendo e escrevendo em `data/*.json` (mais simples de rodar localmente). Depois de rodar qualquer um deles, rode `npm run migrar-supabase` de novo para levar o resultado pro banco — rodar de novo não duplica nada, apenas atualiza.
 
 O `import-desligamento` e o `corrigir-duplicados` **alteram `data/clientes.json` diretamente** — rode sempre com `data/` já com backup recente, e rode uma vez só (rodar de novo não deveria duplicar nada, mas se o processo for interrompido no meio, `corrigir-duplicados` resolve automaticamente qualquer duplicidade de nome que sobrar).
 
@@ -132,7 +138,7 @@ O `import-desligamento` e o `corrigir-duplicados` **alteram `data/clientes.json`
 
 O servidor calcula "hoje" sempre no fuso de Brasília (`hojeBR()` em `server.js`), independente do fuso do container (o Railway roda em UTC por padrão) — sem isso, alertas de aniversário/inauguração e a virada automática de status (pré-lançamento → ativo, ativo → saiu) adiantavam quase 3 horas.
 
-Sessões ficam em memória: **todo redeploy derruba os logins** — a equipe precisa entrar de novo. Os JSONs em `data/` (incluindo `faturamento.json`) são os dados de produção: configure um **Volume no Railway** e faça **backup regular** (ver `docs/DEPLOY.md`). Nunca commite `.env` nem `data/`. O layout é responsivo: funciona no celular, com menu em gaveta (☰) no lugar da barra lateral fixa.
+Sessões ficam em memória: **todo redeploy derruba os logins** — a equipe precisa entrar de novo. Os dados de produção ficam no banco Postgres do Supabase, que já faz backup automático. Nunca commite `.env` nem `data/`. O layout é responsivo: funciona no celular, com menu em gaveta (☰) no lugar da barra lateral fixa.
 
 ## Pendências conhecidas
 

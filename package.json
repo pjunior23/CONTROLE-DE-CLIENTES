@@ -10,14 +10,18 @@
     "import-desligamento": "node scripts/import-desligamento.js",
     "corrigir-duplicados": "node scripts/corrigir-duplicados.js",
     "import-faturamento-araguaina": "node scripts/import-faturamento-araguaina.js",
-    "atualizar-servicos": "node scripts/atualizar-servicos.js"
+    "atualizar-servicos": "node scripts/atualizar-servicos.js",
+    "migrar-supabase": "node scripts/migrar-supabase.js"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "pg": "^8.22.0"
   }
 }
