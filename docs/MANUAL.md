@@ -122,3 +122,7 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 **Artes semanais**: novo campo no cadastro do cliente pra guardar quantas artes por semana o contrato inclui.
 
 **Coluna Serviços em Clientes**: etiquetas rápidas mostrando o que a agência faz por cada cliente, direto na listagem.
+
+## Novidades da versão 5
+
+**Dados migrados pro Supabase**: os dados do sistema (clientes, faturamento, equipe, contas de acesso) agora ficam guardados num banco de dados de verdade (Postgres, hospedado no Supabase), com **backup automático**. Antes ficavam em arquivos dentro do Railway, sem backup — se o servidor tivesse algum problema sério, havia risco de perder tudo. Pra quem usa o sistema no dia a dia isso não muda nada visualmente; é só uma proteção a mais nos bastidores.

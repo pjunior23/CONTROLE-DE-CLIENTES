@@ -33,55 +33,54 @@ No serviço → aba **Variables**, crie:
 
 | Variável | Valor |
 |---|---|
+| `DATABASE_URL` | Connection string do Postgres (Supabase → Project Settings → Database → Connection string → modo "Agrupador de sessões"/Session pooler, URI). Obrigatória — sem ela o app não sobe |
 | `SESSION_SECRET` | Um texto aleatório longo (ex.: gere em https://randomkeygen.com) |
-| `ADMIN_LOGIN` | Login do primeiro admin (ex.: `juninho`) |
+| `ADMIN_LOGIN` | Login do primeiro admin (ex.: `juninho`) — só é usado se o banco estiver totalmente vazio |
 | `ADMIN_SENHA` | Senha forte para o primeiro admin |
 | `ALERTA_DIAS_INAUGURACAO` | `15` (ou o que preferir) |
 | `ALERTA_DIAS_ANIVERSARIO` | `30` (antecedência do alerta de aniversário de unidade) |
-| `DATA_DIR` | `/data` (junto com o Volume do passo 4) |
 
 `PORT` não precisa: o Railway injeta sozinho.
 
-## 4. Volume para os dados (essencial!)
+Use a opção **"Agrupador de sessões" (Session pooler)** do Supabase, não a "Conexão direta" — a conexão direta usa IPv6, que pode não funcionar no Railway. O agrupador de sessões usa IPv4 e é a opção recomendada para apps que ficam rodando o tempo todo (como este).
 
-Sem volume, **os JSONs são apagados a cada deploy** (o container é recriado do zero). No serviço: **Settings → Volumes → Add Volume**, monte em `/data`. Com `DATA_DIR=/data`, os arquivos `usuarios.json`, `clientes.json`, `equipe.json` e `faturamento.json` passam a viver no volume e sobrevivem aos deploys.
+## 4. Banco de dados (Supabase)
+
+Os dados vivem num banco Postgres no [Supabase](https://supabase.com) — com backup automático, sem depender de Volume nem de cópias manuais. Crie um projeto lá (organização → New Project → escolha uma senha forte para o banco e guarde em local seguro → região "South America (São Paulo)" se disponível), pegue a connection string do passo 3 e cole em `DATABASE_URL` no Railway.
+
+Se o app ainda tem dados antigos em `data/*.json` guardados num Volume do Railway (de antes da migração pro Supabase), **não precisa copiar nada na mão**: assim que o app subir com `DATABASE_URL` configurada e o banco estiver vazio, ele detecta o `clientes.json` antigo e migra tudo sozinho automaticamente, uma única vez, antes de começar a atender pedidos. Depois disso o Volume deixa de ser necessário (pode manter por segurança/histórico, sem problema).
 
 ## 5. Primeiro acesso
 
 Abra a URL gerada pelo Railway (Settings → Networking → Generate Domain). Entre com `ADMIN_LOGIN`/`ADMIN_SENHA`. Vá em **⚙️ Configurações** e: cadastre os membros da equipe, crie as contas de acesso (e o seu próprio usuário definitivo, se quiser), e teste com um gestor.
 
-## 6. Importar a planilha
+## 6. Importar a planilha ou fazer manutenção em massa
 
-Localmente: exporte a aba do Google Sheets como CSV, rode `node scripts/import-csv.js planilha.csv` e revise `data/clientes.json`. Para levar ao Railway, a forma mais simples é copiar o conteúdo dos JSONs gerados para dentro do volume usando o console do Railway (ou refazer a importação direto lá). Alternativa prática: rodar o app localmente já com os dados importados, conferir tudo, e só então subir os arquivos.
-
-## 6.1 Outros scripts de importação/manutenção
-
-Rodados do mesmo jeito, direto no **Console do Railway** (aba do serviço no ar) ou localmente:
+Os scripts de importação (`import-csv.js`, `import-faturamento.js`, `import-desligamento.js`, `corrigir-duplicados.js`, `atualizar-servicos.js`) continuam lendo e escrevendo em `data/*.json` — mais simples de rodar e conferir localmente antes de mexer em dados de produção. Fluxo recomendado:
 
 ```
-npm run import-faturamento     # carrega o histórico de faturamento de uma planilha CSV pro data/faturamento.json
-npm run import-desligamento    # cadastra os clientes desligados (lista fixa no script) já com data de saída
-npm run corrigir-duplicados    # encontra clientes com nome repetido (ex.: rodou a importação 2x sem querer) e mescla num só
+node scripts/import-csv.js planilha.csv     # (ou o script que for usar)
+npm run migrar-supabase                     # envia o resultado pro banco Postgres
 ```
 
-Rode cada um **uma vez só**. Se por algum motivo precisar rodar de novo (por exemplo, o Console caiu no meio ou deu erro de "module not found" porque o deploy ainda não tinha terminado), rode `corrigir-duplicados` logo em seguida — ele varre o cadastro inteiro, junta qualquer cliente duplicado, herda a data de saída e migra os lançamentos de faturamento pro registro que ficou, sem perder nada.
+`migrar-supabase` lê `.env` local (precisa ter `DATABASE_URL` apontando pro Supabase de produção) e sincroniza tudo — rodar de novo não duplica nada, só atualiza. Rode sempre com cuidado: como aponta direto pro banco de produção, confira o resultado do script de importação em `data/clientes.json` antes de rodar a migração.
 
 ## 7. Operação do dia a dia
 
 **Relogin após deploy**: as sessões ficam em memória — a cada redeploy todo mundo é deslogado e precisa entrar de novo. Avise a equipe.
 
-**Backup**: os JSONs em `/data` são os dados de produção. Baixe cópias periodicamente (semanal, no mínimo) e guarde em local seguro. Quando migrar para Supabase, isso deixa de ser necessário.
+**Backup**: o Supabase faz backup automático do banco (confira a frequência incluída no seu plano em Project Settings → Database → Backups). Não depende mais de baixar JSONs manualmente.
 
 **Reset de senha**: o admin edita o usuário em Configurações e define uma nova senha. Não existe "esqueci minha senha" por e-mail nesta fase (fica no backlog).
 
 **Faturamento**: acessível por Admin e por quem tem a função "Estrategista de Atendimento" vinculada (e só dos clientes onde é o responsável de Atendimento). Os lançamentos mensais (meta, faturamento, ticket médio) são digitados manualmente — não há integração automática com nenhuma plataforma de pagamento ainda.
 
-**Admin trancado para fora**: se perder a senha do único admin, apague o `usuarios.json` do volume e reinicie o serviço — o admin inicial é recriado a partir das variáveis `ADMIN_LOGIN`/`ADMIN_SENHA` (os demais usuários precisarão ser recriados; clientes e equipe não são afetados).
+**Admin trancado para fora**: se perder a senha do único admin, apague a linha correspondente na tabela `usuarios` pelo **Table Editor do Supabase** e reinicie o serviço no Railway — o admin inicial é recriado a partir das variáveis `ADMIN_LOGIN`/`ADMIN_SENHA` (os demais usuários precisarão ser recriados; clientes e equipe não são afetados).
 
 ## 8. Checklist de segurança
 
-`.env` e `data/` fora do Git (já garantido pelo `.gitignore`). `SESSION_SECRET` forte em produção. Senha do admin inicial trocada após o primeiro login. Repositório GitHub privado. Backups periódicos do volume.
+`.env` e `data/` fora do Git (já garantido pelo `.gitignore`). `DATABASE_URL` e `SESSION_SECRET` fortes em produção. Senha do admin inicial trocada após o primeiro login. Repositório GitHub privado. Acesso ao painel do Supabase restrito a quem precisa.
 
 ## Futuro (já preparado no código)
 
-**Multi-tenant/SaaS**: todo registro tem `agencyId` e todas as consultas já filtram por ele — para atender outras agências, basta criar registros com outro `agencyId` e ajustar o cadastro de usuários. **Supabase**: a camada de dados está isolada nas funções `loadJSON`/`saveJSON` do `server.js`; trocar por Postgres/Supabase não afeta rotas nem frontend.
+**Multi-tenant/SaaS**: todo registro tem `agencyId` e todas as consultas já filtram por ele — para atender outras agências, basta criar registros com outro `agencyId` e ajustar o cadastro de usuários.
