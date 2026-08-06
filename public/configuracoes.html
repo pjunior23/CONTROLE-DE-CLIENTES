@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -190,7 +190,7 @@
     function montarSelectPapel(valor) {
       document.getElementById('uPapel').innerHTML =
         '<option value="admin">👑 Administrador</option>' +
-        '<option value="comercial">🧑‍💼 Comercial (cadastra e edita clientes)</option>' +
+        '<option value="comercial">🧑‍💼 Comercial</option>' +
         '<option value="trafego">🚦 Gestor de Tráfego</option>' +
         funcoesDeAcesso().map(f => `<option value="${f.key}" ${f.key === valor ? 'selected' : ''}>👤 ${esc(f.label)}</option>`).join('');
       if (PAPEIS_ESPECIAIS.includes(valor)) document.getElementById('uPapel').value = valor;
