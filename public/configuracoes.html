@@ -191,7 +191,7 @@
       document.getElementById('uPapel').innerHTML =
         '<option value="admin">👑 Administrador</option>' +
         '<option value="comercial">🧑‍💼 Comercial (cadastra e edita clientes)</option>' +
-        '<option value="trafego">🚦 Gestor de Tráfego (vê tudo, só edita Acesso de Tráfego)</option>' +
+        '<option value="trafego">🚦 Gestor de Tráfego</option>' +
         funcoesDeAcesso().map(f => `<option value="${f.key}" ${f.key === valor ? 'selected' : ''}>👤 ${esc(f.label)}</option>`).join('');
       if (PAPEIS_ESPECIAIS.includes(valor)) document.getElementById('uPapel').value = valor;
     }
