@@ -240,6 +240,8 @@ select optgroup option { color: var(--texto); font-weight: 400; padding-left: 14
 .alerta.vermelho { border-left: 3px solid var(--vermelho); }
 .alerta.azul { border-left: 3px solid var(--azul); }
 .alerta small { color: var(--texto-suave); display: block; margin-top: 2px; }
+.alerta.clicavel { cursor: pointer; transition: background .15s, transform .1s; }
+.alerta.clicavel:hover { background: var(--hover); transform: translateX(2px); }
 
 /* ---------- Filtros ---------- */
 .filtros { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }

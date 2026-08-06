@@ -16,7 +16,7 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 **🚦 Gestor de Tráfego (acesso à carteira inteira)** vê a carteira completa (igual ao administrador), mas só pode alterar o campo **Acesso de Tráfego** (Sim/Não) do cadastro de cada cliente — todo o resto do cadastro fica travado na tela (e o sistema também bloqueia por trás, então nem forçando dá pra mudar mais nada). Não cadastra cliente novo, não exclui, e não tem acesso a equipe, contas de acesso, faturamento nem relatórios. **Atenção**: existe outro tipo de acesso com nome parecido logo abaixo (o gestor individual) — são coisas diferentes, não confunda na hora de criar a conta em Configurações.
 
-**📈 Gestor de Tráfego (individual)** vê apenas os clientes em que aparece como responsável em alguma função. A visão é de consulta: se algum dado estiver errado, avise o administrador para corrigir.
+**📈 Gestor de Tráfego (individual)** vê apenas os clientes em que aparece como responsável em alguma função. Pode preencher e corrigir os **responsáveis por função** desses próprios clientes (útil pra resolver uma pendência direto pelo alerta do Dashboard) — o resto do cadastro (nome, marca, status, datas, acesso de tráfego etc.) fica travado na tela, só o administrador ou o comercial mexem nisso.
 
 **💰 Estrategista de Atendimento** é um Gestor de Tráfego com a função "Estrategista de Atendimento" marcada no cadastro. Além da visão normal de Gestor, ele também acessa a tela de **Faturamento**, mas só dos clientes onde ele é o responsável de Atendimento.
 
@@ -25,6 +25,8 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 É a primeira tela após o login. Mostra os números da carteira (total de clientes, ativos, em inauguração e saindo) e a lista de **alertas**:
 
 🎉 **Inaugurações próximas** — clientes em pré-lançamento com inauguração nos próximos 15 dias. 🎂 **Aniversários de unidade** — unidades que fazem aniversário nos próximos 30 dias, para planejar campanha comemorativa. 👋 **Clientes saindo** — quem está de saída e a data, para organizar a transição. ⚠️ **Pendências** — clientes com alguma função sem responsável definido (inclui os que estavam "A confirmar" na planilha). 🔒 **Sem acesso de tráfego** — clientes com o campo Acesso de Tráfego marcado como "Não". É esse alerta que o acesso de Gestor de Tráfego (o de carteira inteira) acompanha no dia a dia. A meta é manter essas listas zeradas.
+
+**Clique pra resolver na hora**: os itens de **Pendências** e **Sem acesso de tráfego** são clicáveis — clicar num deles abre direto o cadastro daquele cliente, já pronto pra você corrigir o que falta (sem precisar ir em Clientes e procurar manualmente). Cada um só consegue mexer no que sua conta permite: quem tem acesso de Gestor de Tráfego mexe no Acesso de Tráfego, e o estrategista (Gestor individual) preenche os responsáveis por função dos próprios clientes.
 
 ## 👥 Clientes
 
@@ -140,3 +142,9 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 **Novo papel: 🚦 Gestor de Tráfego (carteira inteira)**: vê a carteira inteira, mas só mexe no campo Acesso de Tráfego de cada cliente — não cadastra, não edita mais nada no cadastro e não exclui. Ideal pra quem cuida da liberação de acesso às contas de anúncio sem precisar dar acesso total de admin. Atenção: tem nome parecido com o acesso de "Gestor de Tráfego" individual (que só vê os próprios clientes) — são dois papéis diferentes, com finalidades diferentes.
 
 **Novo alerta no Dashboard: 🔒 Sem acesso de tráfego**: mostra de cara quais clientes estão com o Acesso de Tráfego marcado como "Não", pra facilitar o acompanhamento (principalmente de quem tem o acesso de Gestor de Tráfego de carteira inteira).
+
+## Novidades da versão 8
+
+**Alertas clicáveis no Dashboard**: os itens de **Pendências** e **Sem acesso de tráfego** agora levam direto pro cadastro do cliente ao clicar — resolve na hora, sem precisar ir em Clientes e procurar.
+
+**Gestor individual agora edita responsáveis**: quem tem o acesso de Gestor de Tráfego individual (estrategista) pode entrar no cadastro dos próprios clientes e preencher/corrigir os responsáveis por função — antes só dava pra visualizar. O resto do cadastro continua travado pra esse acesso.

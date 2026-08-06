@@ -28,6 +28,10 @@
       window.location.href = 'clientes.html' + (status ? `?status=${status}` : '');
     }
 
+    function irParaCliente(id) {
+      window.location.href = `clientes.html?abrir=${id}`;
+    }
+
     function secao(emoji, titulo, cor, itens, renderItem, abrir) {
       if (!itens.length) return '';
       return `
@@ -64,9 +68,9 @@
         secao('🎂', 'Aniversários de unidade', 'amarelo', alertas.aniversarios, a =>
           `<div class="alerta amarelo">🎂 <div><b>${esc(a.cliente)}</b> — <b>${fmtData(a.data)}</b> (${a.emDias === 0 ? 'hoje!' : 'em ' + a.emDias + ' dia' + (a.emDias !== 1 ? 's' : '')})</div></div>`, false) +
         secao('⚠️', 'Pendências', 'azul', alertas.pendencias, a =>
-          `<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b><small>${esc(a.faltando.join(', '))}</small></div></div>`, false) +
+          `<div class="alerta azul clicavel" onclick="irParaCliente('${a.id}')" title="Abrir cadastro deste cliente">⚠️ <div><b>${esc(a.cliente)}</b><small>${esc(a.faltando.join(', '))}</small></div></div>`, false) +
         secao('🔒', 'Sem acesso de tráfego', 'vermelho', alertas.semAcesso, a =>
-          `<div class="alerta vermelho">🔒 <div><b>${esc(a.cliente)}</b></div></div>`, false);
+          `<div class="alerta vermelho clicavel" onclick="irParaCliente('${a.id}')" title="Abrir cadastro deste cliente">🔒 <div><b>${esc(a.cliente)}</b></div></div>`, false);
 
       document.getElementById('alertas').innerHTML =
         html || '<div class="vazio">✅ Nenhum alerta no momento. Tudo em ordem!</div>';

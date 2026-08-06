@@ -163,7 +163,9 @@
       document.getElementById('contagem').textContent = st === 'saiu'
         ? `${filtrados.length} clientes no histórico`
         : `${filtrados.length} de ${total} clientes`;
-      const podeEditar = ['admin', 'comercial', 'trafego'].includes(window.USUARIO.papel);
+      // Gestor individual entra aqui também: a lista já vem filtrada pelo servidor só com os
+      // clientes onde ele aparece como responsável — clicar é sempre dentro da própria carteira.
+      const podeEditar = ['admin', 'comercial', 'trafego', 'gestor'].includes(window.USUARIO.papel);
       document.getElementById('tabela').innerHTML = [
         `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Serviços</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Consultor</div></div>`,
         ...filtrados.map(c => {
@@ -211,15 +213,22 @@
       document.getElementById('cArtes').value = c?.artesSemanais ?? '';
       // Excluir é só do admin — Comercial cadastra e edita, mas não apaga cliente
       document.getElementById('btnExcluir').style.display = (c && window.USUARIO.papel === 'admin') ? 'inline-block' : 'none';
-      // Gestor de Tráfego (papel trafego) só mexe no campo Acesso do Tráfego — todo o resto do
+      // Gestor de Tráfego (papel trafego) só mexe no campo Acesso do Tráfego; Gestor individual
+      // (papel gestor, ex.: estrategista) só mexe nos responsáveis por função — todo o resto do
       // formulário fica travado (o servidor também bloqueia, isso aqui é só pra deixar claro na tela)
       const soAcessoTrafego = window.USUARIO.papel === 'trafego';
+      const soResponsaveis = window.USUARIO.papel === 'gestor';
       document.getElementById('formCliente').querySelectorAll('input, select, textarea').forEach(campo => {
-        campo.disabled = soAcessoTrafego && campo.id !== 'cAcesso';
+        if (soAcessoTrafego) campo.disabled = campo.id !== 'cAcesso';
+        else if (soResponsaveis) campo.disabled = !campo.dataset.funcao;
+        else campo.disabled = false;
       });
       document.getElementById('modalErro').textContent = '';
       if (soAcessoTrafego) {
         document.getElementById('modalErro').textContent = '🚦 Você só pode alterar o Acesso do Tráfego deste cliente.';
+        document.getElementById('modalErro').classList.add('aviso');
+      } else if (soResponsaveis) {
+        document.getElementById('modalErro').textContent = '👤 Você só pode preencher os responsáveis por função deste cliente.';
         document.getElementById('modalErro').classList.add('aviso');
       } else {
         document.getElementById('modalErro').classList.remove('aviso');
@@ -324,7 +333,7 @@
       await carregar();
       // Abrir direto o cadastro de um cliente específico (vindo da Visão por Pessoa, por exemplo)
       const abrirId = params.get('abrir');
-      if (abrirId && ['admin', 'comercial', 'trafego'].includes(user.papel)) abrirModal(abrirId);
+      if (abrirId && ['admin', 'comercial', 'trafego', 'gestor'].includes(user.papel)) abrirModal(abrirId);
     })();
   </script>
 </body>

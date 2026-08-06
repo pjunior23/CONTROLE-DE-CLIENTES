@@ -84,7 +84,7 @@ async function seedAdmin() {
       login,
       senhaHash: bcrypt.hashSync(senha, 10),
       nome: 'Administrador',
-      papel: 'admin',       // 'admin' | 'gestor' | 'comercial'
+      papel: 'admin',       // 'admin' | 'gestor' | 'comercial' | 'trafego'
       funcao: null,
       membroNome: null,     // gestores: nome do membro da equipe correspondente
       criadoEm: new Date().toISOString(),
@@ -125,12 +125,12 @@ function requireGerenciarClientes(req, res, next) {
   next();
 }
 
-// Editar cliente: admin e comercial editam tudo; Gestor de Tráfego (papel trafego) também pode entrar
-// nessa rota, mas o próprio handler restringe o que ela de fato consegue alterar (só o
-// campo de Acesso de Tráfego) — ver PUT /api/clientes/:id.
+// Editar cliente: admin e comercial editam tudo; Gestor de Tráfego (papel trafego) e Gestor
+// individual (papel gestor, ex.: estrategista) também podem entrar nessa rota, mas o próprio
+// handler restringe o que cada um de fato consegue alterar — ver PUT /api/clientes/:id.
 function requireEditarClientes(req, res, next) {
   if (!req.session.user) return res.status(401).json({ erro: 'Não autenticado' });
-  if (!['admin', 'comercial', 'trafego'].includes(req.session.user.papel)) {
+  if (!['admin', 'comercial', 'trafego', 'gestor'].includes(req.session.user.papel)) {
     return res.status(403).json({ erro: 'Sem permissão para editar clientes' });
   }
   next();
@@ -223,6 +223,41 @@ function montarCliente(body, existente) {
   return cli;
 }
 
+// ------------------------------------------------------------
+// Webhook (n8n) — dispara quando um cliente novo é cadastrado.
+// Manda o objeto do cliente inteiro; quem monta a automação no n8n decide
+// lá quais campos usar em cada uma (não precisa mexer aqui de novo depois).
+// Configurado por variável de ambiente — se não tiver nenhuma URL configurada,
+// não faz nada (fica desligado por padrão).
+// ------------------------------------------------------------
+function urlsWebhook() {
+  return (process.env.WEBHOOK_URLS || '')
+    .split(',')
+    .map(u => u.trim())
+    .filter(Boolean);
+}
+
+async function dispararWebhookClienteCriado(cliente) {
+  const urls = urlsWebhook();
+  if (!urls.length) return;
+  const payload = {
+    evento: 'cliente_criado',
+    dataEnvio: new Date().toISOString(),
+    cliente,
+  };
+  const headers = { 'Content-Type': 'application/json' };
+  // Segredo opcional pra quem recebe o webhook conferir que veio da gente de verdade
+  if (process.env.WEBHOOK_SECRET) headers['X-Webhook-Secret'] = process.env.WEBHOOK_SECRET;
+  await Promise.allSettled(urls.map(async (url) => {
+    try {
+      const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+      if (!r.ok) console.error(`⚠️ Webhook (${url}) respondeu status ${r.status}`);
+    } catch (e) {
+      console.error(`⚠️ Falha ao chamar webhook (${url}):`, e.message);
+    }
+  }));
+}
+
 app.post('/api/clientes', requireGerenciarClientes, rota(async (req, res) => {
   const erro = validarCliente(req.body);
   if (erro) return res.status(400).json({ erro });
@@ -233,6 +268,7 @@ app.post('/api/clientes', requireGerenciarClientes, rota(async (req, res) => {
   const novo = montarCliente(req.body, null);
   clientes.push(novo);
   await db.saveClientes(clientes);
+  dispararWebhookClienteCriado(novo); // fire-and-forget — não atrasa nem quebra o cadastro
   res.status(201).json(novo);
 }));
 
@@ -241,6 +277,15 @@ app.put('/api/clientes/:id', requireEditarClientes, rota(async (req, res) => {
   // frontend esconde, filtra aqui também. Qualquer outro campo enviado é ignorado.
   if (req.session.user.papel === 'trafego') {
     req.body = { acessoTrafego: req.body.acessoTrafego };
+  }
+  // Gestor individual (estrategista etc.) só pode preencher/corrigir os responsáveis por função,
+  // e só nos clientes que já enxerga na própria carteira — não mexe em mais nada do cadastro.
+  if (req.session.user.papel === 'gestor') {
+    const visiveis = await clientesVisiveis(req.session.user);
+    if (!visiveis.some(c => c.id === req.params.id)) {
+      return res.status(403).json({ erro: 'Sem permissão para editar esse cliente' });
+    }
+    req.body = { responsaveis: req.body.responsaveis };
   }
   const clientes = await db.clientes();
   const idx = clientes.findIndex(c => c.id === req.params.id);

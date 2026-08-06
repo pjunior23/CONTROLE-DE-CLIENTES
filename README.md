@@ -64,6 +64,8 @@ Acesse http://localhost:3000. No primeiro boot, se não existir nenhum usuário,
 | `ALERTA_DIAS_ANIVERSARIO` | 30 | Antecedência do alerta de aniversário da unidade |
 | `DATABASE_URL` | — | Connection string do Postgres (Supabase). Obrigatória — sem ela o app não sobe |
 | `DATA_DIR` | ./data | Só usada pelos scripts de importação/migração (JSON local) |
+| `WEBHOOK_URLS` | — | Opcional. URL(s) do n8n, separadas por vírgula, que recebem POST com o cliente inteiro sempre que um cliente novo é cadastrado |
+| `WEBHOOK_SECRET` | — | Opcional. Enviado no header `X-Webhook-Secret` em toda chamada de webhook |
 
 ## Modelo de dados
 
@@ -87,8 +89,8 @@ Todas as rotas retornam JSON; erros vêm como `{ "erro": "mensagem" }`. As de re
 | POST | `/api/logout` | logado | Encerra a sessão |
 | GET | `/api/me` | logado | Dados do usuário logado |
 | GET | `/api/clientes` | logado | Admin: todos. Gestor: só onde `membroNome` aparece |
-| POST | `/api/clientes` | admin, comercial | Cria cliente |
-| PUT | `/api/clientes/:id` | admin, comercial, trafego | Atualiza cliente (papel `trafego`: servidor aceita só o campo `acessoTrafego`, ignora qualquer outro campo enviado) |
+| POST | `/api/clientes` | admin, comercial | Cria cliente (dispara webhook `cliente_criado` se `WEBHOOK_URLS` estiver configurada — ver `docs/DEPLOY.md`) |
+| PUT | `/api/clientes/:id` | admin, comercial, trafego, gestor | Atualiza cliente (papel `trafego`: só aceita `acessoTrafego`; papel `gestor`: só aceita `responsaveis`, e só em clientes já visíveis pra ele — servidor ignora/bloqueia qualquer outra tentativa) |
 | DELETE | `/api/clientes/:id` | admin | Exclui cliente |
 | GET | `/api/alertas` | logado | `{inauguracoes, aniversarios, saidas, pendencias, semAcesso}` sobre os clientes visíveis |
 | GET | `/api/pessoas` | logado | Clientes agrupados por responsável, com funções (Consultor/Gerente não entra, pois é da equipe do cliente) |

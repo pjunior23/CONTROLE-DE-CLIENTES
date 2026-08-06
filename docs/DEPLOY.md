@@ -39,6 +39,8 @@ No serviço → aba **Variables**, crie:
 | `ADMIN_SENHA` | Senha forte para o primeiro admin |
 | `ALERTA_DIAS_INAUGURACAO` | `15` (ou o que preferir) |
 | `ALERTA_DIAS_ANIVERSARIO` | `30` (antecedência do alerta de aniversário de unidade) |
+| `WEBHOOK_URLS` | Opcional. URL(s) do n8n que recebem um POST com os dados completos sempre que um cliente novo é cadastrado. Mais de uma URL: separe por vírgula. Sem preencher, o webhook fica desligado |
+| `WEBHOOK_SECRET` | Opcional. Um texto qualquer, enviado no header `X-Webhook-Secret` em toda chamada, pra quem recebe conferir que veio mesmo daqui |
 
 `PORT` não precisa: o Railway injeta sozinho.
 
@@ -80,6 +82,37 @@ npm run migrar-supabase                     # envia o resultado pro banco Postgr
 ## 8. Checklist de segurança
 
 `.env` e `data/` fora do Git (já garantido pelo `.gitignore`). `DATABASE_URL` e `SESSION_SECRET` fortes em produção. Senha do admin inicial trocada após o primeiro login. Repositório GitHub privado. Acesso ao painel do Supabase restrito a quem precisa.
+
+## 9. Automações via webhook (n8n)
+
+Ao cadastrar um cliente novo (não dispara ao editar, só na criação), o app manda automaticamente um `POST` para todas as URLs configuradas em `WEBHOOK_URLS`, com o corpo:
+
+```json
+{
+  "evento": "cliente_criado",
+  "dataEnvio": "2026-08-06T18:30:00.000Z",
+  "cliente": {
+    "id": "...",
+    "nome": "...",
+    "marca": "...",
+    "status": "ativo",
+    "responsaveis": { "atendimento": "...", "planejamento": "...", "copy": "...", "...": "..." },
+    "acessoTrafego": true,
+    "dataInauguracao": "2026-09-01",
+    "dataSaida": null,
+    "aniversario": "2000-09-01",
+    "dataEntrada": "2026-08-06",
+    "artesSemanais": 4,
+    "obs": "...",
+    "criadoEm": "...",
+    "atualizadoEm": "..."
+  }
+}
+```
+
+Manda o cadastro inteiro de propósito — quem monta o fluxo no n8n escolhe lá quais campos usar em cada automação, sem precisar pedir mudança no código aqui depois. Se `WEBHOOK_SECRET` estiver configurado, toda chamada leva o header `X-Webhook-Secret` com esse valor, pra validar a origem no n8n antes de rodar o fluxo.
+
+Se o n8n estiver fora do ar ou a URL responder erro, o cadastro do cliente **não é afetado** — só fica um aviso no log do Railway (`⚠️ Falha ao chamar webhook...`). Pra apontar pra mais de uma automação (o pedido original era pelo menos 3), separe as URLs por vírgula em `WEBHOOK_URLS`.
 
 ## Futuro (já preparado no código)
 
