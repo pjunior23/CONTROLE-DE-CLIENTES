@@ -14,7 +14,9 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 **🧑‍💼 Comercial** vê a carteira completa (igual ao administrador) e pode cadastrar e editar clientes — pensado pro time comercial fechar um cliente novo e já lançar no sistema. Não exclui cliente e não tem acesso a equipe, contas de acesso, faturamento nem relatórios.
 
-**📈 Gestor de Tráfego** vê apenas os clientes em que aparece como responsável em alguma função. A visão é de consulta: se algum dado estiver errado, avise o administrador para corrigir.
+**🚦 Gestor de Tráfego (acesso à carteira inteira)** vê a carteira completa (igual ao administrador), mas só pode alterar o campo **Acesso de Tráfego** (Sim/Não) do cadastro de cada cliente — todo o resto do cadastro fica travado na tela (e o sistema também bloqueia por trás, então nem forçando dá pra mudar mais nada). Não cadastra cliente novo, não exclui, e não tem acesso a equipe, contas de acesso, faturamento nem relatórios. **Atenção**: existe outro tipo de acesso com nome parecido logo abaixo (o gestor individual) — são coisas diferentes, não confunda na hora de criar a conta em Configurações.
+
+**📈 Gestor de Tráfego (individual)** vê apenas os clientes em que aparece como responsável em alguma função. A visão é de consulta: se algum dado estiver errado, avise o administrador para corrigir.
 
 **💰 Estrategista de Atendimento** é um Gestor de Tráfego com a função "Estrategista de Atendimento" marcada no cadastro. Além da visão normal de Gestor, ele também acessa a tela de **Faturamento**, mas só dos clientes onde ele é o responsável de Atendimento.
 
@@ -22,7 +24,7 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 É a primeira tela após o login. Mostra os números da carteira (total de clientes, ativos, em inauguração e saindo) e a lista de **alertas**:
 
-🎉 **Inaugurações próximas** — clientes em pré-lançamento com inauguração nos próximos 15 dias. 🎂 **Aniversários de unidade** — unidades que fazem aniversário nos próximos 30 dias, para planejar campanha comemorativa. 👋 **Clientes saindo** — quem está de saída e a data, para organizar a transição. ⚠️ **Pendências** — clientes com alguma função sem responsável definido (inclui os que estavam "A confirmar" na planilha) ou sem acesso de tráfego liberado. A meta é manter essa lista zerada.
+🎉 **Inaugurações próximas** — clientes em pré-lançamento com inauguração nos próximos 15 dias. 🎂 **Aniversários de unidade** — unidades que fazem aniversário nos próximos 30 dias, para planejar campanha comemorativa. 👋 **Clientes saindo** — quem está de saída e a data, para organizar a transição. ⚠️ **Pendências** — clientes com alguma função sem responsável definido (inclui os que estavam "A confirmar" na planilha). 🔒 **Sem acesso de tráfego** — clientes com o campo Acesso de Tráfego marcado como "Não". É esse alerta que o acesso de Gestor de Tráfego (o de carteira inteira) acompanha no dia a dia. A meta é manter essas listas zeradas.
 
 ## 👥 Clientes
 
@@ -32,7 +34,7 @@ A versão digital da planilha. Cada linha mostra o cliente, o status, os princip
 
 **Buscar, filtrar e ordenar**: use a caixa 🔍 para buscar pelo nome, o filtro de status, o filtro por marca (Fast Escova, Fast Spa, Mega Studio...) e o filtro por pessoa (ex.: escolha "Marcela" para ver só os clientes dela). Tem também um seletor de **ordem**: alfabética, saída mais recente primeiro ou saída mais antiga primeiro — útil pra revisar o histórico de quem saiu.
 
-**Cadastrar ou editar (só admin)**: clique em **➕ Novo Cliente** ou em qualquer linha da tabela. No formulário você define nome (padrão: marca + unidade, ex.: "Fast Escova Aclimação"), marca, status, o responsável de cada função (Estrategista de Atendimento, Estrategista de Planejamento, Copywriter, Apoio, Consultor/Gerente, Social Media e Edição de Vídeos), as datas de inauguração, saída, aniversário da unidade e entrada na carteira, quantas **artes semanais** o contrato inclui, o acesso de tráfego e observações. Nos campos de Apoio, Consultor, Social Media e Edição de Vídeos tem duas opções especiais: **"EQUIPE PRÓPRIA"** quando é o time do próprio cliente que cuida, e **"NÃO TEM"** quando esse serviço simplesmente não faz parte do contrato — nos dois casos não vira pendência no dashboard. Os nomes dos dropdowns vêm do cadastro de equipe em Configurações. Também dá pra chegar direto num cliente clicando na linha dele na tela **Por Pessoa**.
+**Cadastrar ou editar (admin e Comercial)**: clique em **➕ Novo Cliente** ou em qualquer linha da tabela. No formulário você define nome (padrão: marca + unidade, ex.: "Fast Escova Aclimação"), marca, status, o responsável de cada função (Estrategista de Atendimento, Estrategista de Planejamento, Copywriter, Apoio, Consultor/Gerente, Social Media e Edição de Vídeos), as datas de inauguração, saída, aniversário da unidade e entrada na carteira, quantas **artes semanais** o contrato inclui, o acesso de tráfego e observações. Nos campos de Apoio, Consultor, Social Media e Edição de Vídeos tem duas opções especiais: **"EQUIPE PRÓPRIA"** quando é o time do próprio cliente que cuida, e **"NÃO TEM"** quando esse serviço simplesmente não faz parte do contrato — nos dois casos não vira pendência no dashboard. Os nomes dos dropdowns vêm do cadastro de equipe em Configurações. Também dá pra chegar direto num cliente clicando na linha dele na tela **Por Pessoa**.
 
 **Coluna Serviços**: mostra de relance o que a agência faz por aquele cliente — 📱 Social Media e 🎬 Edição de Vídeo aparecem coloridos quando é a agência que executa, com 🏠 quando é a equipe própria do cliente, e 🎨 com a quantidade de artes semanais contratadas. Serviço marcado como "NÃO TEM" simplesmente não aparece.
 
@@ -70,7 +72,7 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 
 **Membros da Equipe**: a lista de nomes que aparece nos dropdowns de responsáveis. Cadastre todo mundo antes de montar os clientes. Remover um membro não altera os clientes já cadastrados.
 
-**Contas de Acesso**: onde se criam os logins. Para um gestor, escolha o papel "Gestor de Tráfego", **vincule ao membro da equipe correspondente** (define quais clientes ele enxerga) e, se for o caso, marque a função "Estrategista de Atendimento" pra liberar o acesso ao Faturamento. Para dar acesso ao time comercial, escolha o papel "🧑‍💼 Comercial" — não precisa vincular a nenhum membro da equipe, já que ele vê a carteira inteira. Para trocar uma senha, edite o usuário e digite a nova senha (deixe em branco para manter a atual). Você não consegue excluir a própria conta.
+**Contas de Acesso**: onde se criam os logins. Para um gestor individual (Estrategista de Atendimento, Planejamento, Copywriter, Apoio, Social Media ou Edição de Vídeos), escolha a função dele na lista, **vincule ao membro da equipe correspondente** (define quais clientes ele enxerga) e, se for o caso, marque a função "Estrategista de Atendimento" pra liberar o acesso ao Faturamento. Para dar acesso ao time comercial, escolha o papel "🧑‍💼 Comercial" — não precisa vincular a nenhum membro da equipe, já que ele vê a carteira inteira. Para dar acesso ao Gestor de Tráfego de carteira inteira (só edita o Acesso de Tráfego), escolha "🚦 Gestor de Tráfego" — também sem vínculo com membro da equipe; **não confunda com um gestor individual comum**, é um acesso diferente. Para trocar uma senha, edite o usuário e digite a nova senha (deixe em branco para manter a atual). Você não consegue excluir a própria conta.
 
 ## Perguntas frequentes
 
@@ -132,3 +134,9 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 ## Novidades da versão 6
 
 **Novo papel: 🧑‍💼 Comercial**: agora dá pra dar acesso ao time comercial pra cadastrar cliente novo direto no sistema, sem precisar do administrador. Comercial vê a carteira inteira e pode cadastrar e editar clientes, mas não exclui nenhum e não tem acesso a equipe, contas de acesso, faturamento ou relatórios — isso continua só com o administrador.
+
+## Novidades da versão 7
+
+**Novo papel: 🚦 Gestor de Tráfego (carteira inteira)**: vê a carteira inteira, mas só mexe no campo Acesso de Tráfego de cada cliente — não cadastra, não edita mais nada no cadastro e não exclui. Ideal pra quem cuida da liberação de acesso às contas de anúncio sem precisar dar acesso total de admin. Atenção: tem nome parecido com o acesso de "Gestor de Tráfego" individual (que só vê os próprios clientes) — são dois papéis diferentes, com finalidades diferentes.
+
+**Novo alerta no Dashboard: 🔒 Sem acesso de tráfego**: mostra de cara quais clientes estão com o Acesso de Tráfego marcado como "Não", pra facilitar o acompanhamento (principalmente de quem tem o acesso de Gestor de Tráfego de carteira inteira).

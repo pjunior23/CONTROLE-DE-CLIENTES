@@ -71,7 +71,7 @@ Todos os registros carregam `agencyId` (hoje sempre `"default"`) — preparaçã
 
 **Cliente** (`clientes.json`): `id`, `agencyId`, `nome` (marca + unidade, ex.: "Fast Escova Aclimação"), `marca` (para filtro; vazio quando "Outro"), `status` (`ativo` | `prelancamento` | `saindo` — o status "Ativo OK" foi removido, tudo que era "ativo_ok" virou "ativo"), `responsaveis` ({ `atendimento` (Estrategista de Atendimento), `planejamento` (Estrategista de Planejamento), `copy` (Copywriter), `apoio`, `consultor` (Consultor/Gerente), `socialMedia`, `edicaoVideos` } — texto livre; `"EQUIPE PRÓPRIA"` indica que o próprio cliente cuida, `"NÃO TEM"` (disponível em `apoio`, `consultor`, `socialMedia`, `edicaoVideos`) indica que esse serviço não faz parte do contrato; vazio = pendência), `artesSemanais` (número ou null — quantas artes por semana o contrato inclui), `acessoTrafego` (bool), `dataInauguracao`, `dataSaida`, `aniversario` (aniversário da unidade, gera alerta anual) e `dataEntrada` (`AAAA-MM-DD` ou null), `obs`, `criadoEm`, `atualizadoEm`. O status efetivo (`statusEfetivoSrv`) é sempre calculado a partir das datas — nunca setado manualmente para as transições de pré-lançamento/saindo/saiu.
 
-**Usuário** (`usuarios.json`): `id`, `agencyId`, `login`, `senhaHash` (bcrypt), `nome`, `papel` (`admin` | `gestor` | `comercial`), `funcao` (função operacional do gestor, ex.: `atendimento` — usada para liberar acesso ao Faturamento; sempre `null` para admin e comercial), `membroNome` (gestores: nome do membro da equipe usado para filtrar a visão; sempre `null` para admin e comercial), `criadoEm`.
+**Usuário** (`usuarios.json`): `id`, `agencyId`, `login`, `senhaHash` (bcrypt), `nome`, `papel` (`admin` | `gestor` | `comercial` | `trafego`), `funcao` (função operacional do gestor, ex.: `atendimento` — usada para liberar acesso ao Faturamento; sempre `null` para admin, comercial e trafego), `membroNome` (gestores: nome do membro da equipe usado para filtrar a visão; sempre `null` para admin, comercial e trafego), `criadoEm`.
 
 **Equipe** (`equipe.json`): `id`, `agencyId`, `nome`, `funcao`.
 
@@ -88,9 +88,9 @@ Todas as rotas retornam JSON; erros vêm como `{ "erro": "mensagem" }`. As de re
 | GET | `/api/me` | logado | Dados do usuário logado |
 | GET | `/api/clientes` | logado | Admin: todos. Gestor: só onde `membroNome` aparece |
 | POST | `/api/clientes` | admin, comercial | Cria cliente |
-| PUT | `/api/clientes/:id` | admin, comercial | Atualiza cliente |
+| PUT | `/api/clientes/:id` | admin, comercial, trafego | Atualiza cliente (papel `trafego`: servidor aceita só o campo `acessoTrafego`, ignora qualquer outro campo enviado) |
 | DELETE | `/api/clientes/:id` | admin | Exclui cliente |
-| GET | `/api/alertas` | logado | `{inauguracoes, aniversarios, saidas, pendencias}` sobre os clientes visíveis |
+| GET | `/api/alertas` | logado | `{inauguracoes, aniversarios, saidas, pendencias, semAcesso}` sobre os clientes visíveis |
 | GET | `/api/pessoas` | logado | Clientes agrupados por responsável, com funções (Consultor/Gerente não entra, pois é da equipe do cliente) |
 | GET | `/api/equipe` | logado | Lista membros |
 | POST / DELETE | `/api/equipe[/:id]` | admin | Adiciona / remove membro |
@@ -109,7 +109,7 @@ Páginas HTML (exceto `login.html`) redirecionam para o login quando não há se
 
 ## Regras de permissão
 
-**Admin**: vê e edita tudo; gerencia equipe, contas, faturamento de todos os clientes e os relatórios em PDF. **Comercial**: enxerga a carteira inteira (igual admin) e pode cadastrar e editar clientes, mas não exclui cliente e não acessa equipe, contas, faturamento nem relatórios (só o admin faz isso). **Gestor**: só enxerga clientes onde o `membroNome` vinculado aparece em alguma função; não edita nada (a API bloqueia com 403 e a interface esconde os botões). **Gestor com função "Estrategista de Atendimento"**: além da visão normal, acessa a tela de Faturamento — mas só dos clientes onde ele é o responsável de Atendimento (não qualquer cliente que apareça em qualquer função dele).
+**Admin**: vê e edita tudo; gerencia equipe, contas, faturamento de todos os clientes e os relatórios em PDF. **Comercial**: enxerga a carteira inteira (igual admin) e pode cadastrar e editar clientes, mas não exclui cliente e não acessa equipe, contas, faturamento nem relatórios (só o admin faz isso). **Gestor de Tráfego** (papel `trafego` — atenção, é um papel diferente do "Gestor" comum abaixo, mesmo tendo nome parecido): enxerga a carteira inteira (igual admin), mas só pode alterar o campo **Acesso de Tráfego** (Sim/Não) de cada cliente — não cadastra cliente novo, não edita mais nada no cadastro, não exclui, e não acessa equipe, contas, faturamento nem relatórios. Essa restrição é aplicada no servidor (não só escondida na tela): qualquer outro campo enviado na requisição é ignorado. **Gestor** (papel `gestor`): só enxerga clientes onde o `membroNome` vinculado aparece em alguma função; não edita nada (a API bloqueia com 403 e a interface esconde os botões). Cada gestor tem uma função específica (Estrategista de Atendimento, Planejamento, Copywriter, Apoio, Social Media ou Edição de Vídeos) — é esse grupo que a documentação de negócio costuma chamar genericamente de "Gestor de Tráfego", mas no sistema o papel técnico deles é `gestor`, não `trafego`. **Gestor com função "Estrategista de Atendimento"**: além da visão normal, acessa a tela de Faturamento — mas só dos clientes onde ele é o responsável de Atendimento (não qualquer cliente que apareça em qualquer função dele).
 
 ## Importar a planilha atual
 

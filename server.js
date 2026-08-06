@@ -125,11 +125,22 @@ function requireGerenciarClientes(req, res, next) {
   next();
 }
 
+// Editar cliente: admin e comercial editam tudo; Gestor de Tráfego (papel trafego) também pode entrar
+// nessa rota, mas o próprio handler restringe o que ela de fato consegue alterar (só o
+// campo de Acesso de Tráfego) — ver PUT /api/clientes/:id.
+function requireEditarClientes(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ erro: 'Não autenticado' });
+  if (!['admin', 'comercial', 'trafego'].includes(req.session.user.papel)) {
+    return res.status(403).json({ erro: 'Sem permissão para editar clientes' });
+  }
+  next();
+}
+
 // Gestor enxerga apenas clientes onde o membro vinculado aparece em alguma função.
-// Admin e Comercial enxergam a carteira inteira.
+// Admin, Comercial e Gestor de Tráfego (papel trafego) enxergam a carteira inteira.
 async function clientesVisiveis(user) {
   const todos = (await db.clientes()).filter(c => c.agencyId === user.agencyId);
-  if (user.papel === 'admin' || user.papel === 'comercial') return todos;
+  if (['admin', 'comercial', 'trafego'].includes(user.papel)) return todos;
   const nome = (user.membroNome || '').trim().toUpperCase();
   if (!nome) return [];
   // Nomes compostos ("Juliana/Paula") contam para cada pessoa
@@ -225,7 +236,12 @@ app.post('/api/clientes', requireGerenciarClientes, rota(async (req, res) => {
   res.status(201).json(novo);
 }));
 
-app.put('/api/clientes/:id', requireGerenciarClientes, rota(async (req, res) => {
+app.put('/api/clientes/:id', requireEditarClientes, rota(async (req, res) => {
+  // Gestor de Tráfego (papel trafego) só pode mexer no Acesso de Tráfego — não confia no que o
+  // frontend esconde, filtra aqui também. Qualquer outro campo enviado é ignorado.
+  if (req.session.user.papel === 'trafego') {
+    req.body = { acessoTrafego: req.body.acessoTrafego };
+  }
   const clientes = await db.clientes();
   const idx = clientes.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Cliente não encontrado' });
@@ -263,7 +279,7 @@ app.get('/api/alertas', requireAuth, rota(async (req, res) => {
   const hoje = hojeBR();
   const limite = new Date(hoje.getTime() + dias * 86400000);
   const clientes = await clientesVisiveis(req.session.user);
-  const alertas = { inauguracoes: [], aniversarios: [], saidas: [], pendencias: [] };
+  const alertas = { inauguracoes: [], aniversarios: [], saidas: [], pendencias: [], semAcesso: [] };
 
   for (const c of clientes) {
     // Cliente que já saiu (data de saída no passado) não gera alertas
@@ -295,14 +311,18 @@ app.get('/api/alertas', requireAuth, rota(async (req, res) => {
       alertas.saidas.push({ cliente: c.nome, data: c.dataSaida || null, id: c.id });
     }
     const faltando = FUNCOES.filter(f => !(c.responsaveis?.[f.key] || '').trim()).map(f => f.label);
-    // Acesso de Tráfego desativado por enquanto (para reativar, descomente):
-    // if (!c.acessoTrafego) faltando.push('Acesso de Tráfego');
     if (faltando.length && c.status !== 'saindo') {
       alertas.pendencias.push({ cliente: c.nome, faltando, id: c.id });
+    }
+    // Alerta separado (não entra em "Pendências") pra quem não tem acesso de tráfego liberado —
+    // é o que a Gestor de Tráfego (papel trafego) acompanha no dia a dia.
+    if (!c.acessoTrafego && c.status !== 'saindo') {
+      alertas.semAcesso.push({ cliente: c.nome, id: c.id });
     }
   }
   alertas.inauguracoes.sort((a, b) => a.data.localeCompare(b.data));
   alertas.aniversarios.sort((a, b) => a.emDias - b.emDias);
+  alertas.semAcesso.sort((a, b) => a.cliente.localeCompare(b.cliente));
   res.json(alertas);
 }));
 
@@ -402,7 +422,7 @@ app.post('/api/usuarios', requireAdmin, rota(async (req, res) => {
   const { login, senha, nome, papel, funcao, membroNome } = req.body || {};
   if (!login || !senha || !nome) return res.status(400).json({ erro: 'Informe login, senha e nome' });
   if (senha.length < 6) return res.status(400).json({ erro: 'Senha precisa de ao menos 6 caracteres' });
-  if (!['admin', 'gestor', 'comercial'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
+  if (!['admin', 'gestor', 'comercial', 'trafego'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
   const usuarios = await db.usuarios();
   if (usuarios.some(u => u.login.toLowerCase() === login.toLowerCase())) {
     return res.status(400).json({ erro: 'Login já em uso' });
@@ -432,7 +452,7 @@ app.put('/api/usuarios/:id', requireAdmin, rota(async (req, res) => {
     u.senhaHash = bcrypt.hashSync(senha, 10);
   }
   if (nome) u.nome = String(nome).trim();
-  if (papel && ['admin', 'gestor', 'comercial'].includes(papel)) u.papel = papel;
+  if (papel && ['admin', 'gestor', 'comercial', 'trafego'].includes(papel)) u.papel = papel;
   if (funcao !== undefined) u.funcao = u.papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null;
   if (membroNome !== undefined) u.membroNome = u.papel === 'gestor' ? String(membroNome || '').trim() || null : null;
   await db.saveUsuarios(usuarios);

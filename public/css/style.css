@@ -133,6 +133,7 @@ a { color: inherit; text-decoration: none; }
 .badge.admin         { background: rgba(196,151,59,.18); color: var(--ouro1); }
 .badge.gestor        { background: rgba(52,152,219,.15); color: var(--azul); }
 .badge.comercial     { background: rgba(233,30,140,.15); color: var(--rosa1); }
+.badge.trafego       { background: rgba(26,188,156,.15); color: #1abc9c; }
 
 /* ---------- Tabelas em grid ---------- */
 .tabela { display: flex; flex-direction: column; gap: 6px; }
@@ -257,6 +258,7 @@ select optgroup option { color: var(--texto); font-weight: 400; padding-left: 14
 }
 .login-box p { text-align: center; color: var(--texto-suave); font-size: 13px; margin-bottom: 20px; }
 .erro { color: #ff8a7a; font-size: 13px; margin-top: 12px; text-align: center; min-height: 18px; }
+.erro.aviso { color: var(--ouro1, #C4973B); }
 
 .vazio { color: var(--texto-suave); font-size: 13px; padding: 12px 0; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }

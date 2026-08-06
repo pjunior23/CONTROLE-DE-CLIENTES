@@ -75,7 +75,7 @@
 
     (async () => {
       const user = await montarSidebar('pessoas.html');
-      SOU_ADMIN = user.papel === 'admin' || user.papel === 'comercial';
+      SOU_ADMIN = ['admin', 'comercial', 'trafego'].includes(user.papel);
       const { funcoes } = await api('/api/meta');
       const selFuncao = document.getElementById('pFuncao');
       funcoes.filter(f => f.key !== 'consultor').forEach(f => selFuncao.insertAdjacentHTML('beforeend', `<option value="${esc(f.label)}">${esc(f.label)}</option>`));

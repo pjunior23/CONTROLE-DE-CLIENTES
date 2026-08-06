@@ -40,10 +40,10 @@
     (async () => {
       const user = await montarSidebar('dashboard.html');
       document.getElementById('saudacao').textContent =
-        (user.papel === 'admin' || user.papel === 'comercial') ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
+        ['admin', 'comercial', 'trafego'].includes(user.papel) ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
 
       const [clientes, alertas] = await Promise.all([api('/api/clientes'), api('/api/alertas')]);
-      ['inauguracoes', 'aniversarios', 'saidas', 'pendencias'].forEach(k => { if (!alertas[k]) alertas[k] = []; });
+      ['inauguracoes', 'aniversarios', 'saidas', 'pendencias', 'semAcesso'].forEach(k => { if (!alertas[k]) alertas[k] = []; });
 
       const naCarteira = clientes.filter(c => statusEfetivo(c) !== 'saiu');
       const historico = clientes.length - naCarteira.length;
@@ -64,7 +64,9 @@
         secao('🎂', 'Aniversários de unidade', 'amarelo', alertas.aniversarios, a =>
           `<div class="alerta amarelo">🎂 <div><b>${esc(a.cliente)}</b> — <b>${fmtData(a.data)}</b> (${a.emDias === 0 ? 'hoje!' : 'em ' + a.emDias + ' dia' + (a.emDias !== 1 ? 's' : '')})</div></div>`, false) +
         secao('⚠️', 'Pendências', 'azul', alertas.pendencias, a =>
-          `<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b><small>${esc(a.faltando.join(', '))}</small></div></div>`, false);
+          `<div class="alerta azul">⚠️ <div><b>${esc(a.cliente)}</b><small>${esc(a.faltando.join(', '))}</small></div></div>`, false) +
+        secao('🔒', 'Sem acesso de tráfego', 'vermelho', alertas.semAcesso, a =>
+          `<div class="alerta vermelho">🔒 <div><b>${esc(a.cliente)}</b></div></div>`, false);
 
       document.getElementById('alertas').innerHTML =
         html || '<div class="vazio">✅ Nenhum alerta no momento. Tudo em ordem!</div>';
