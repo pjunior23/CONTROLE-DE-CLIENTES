@@ -156,7 +156,7 @@
           <div class="linha" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 90px">
             <div><b>${esc(u.nome)}</b></div>
             <div>${esc(u.login)}</div>
-            <div><span class="badge ${u.papel}">${u.papel === 'admin' ? '👑 Admin' : '👤 ' + esc((FUNCOES.find(f => f.key === u.funcao) || {}).label || 'Equipe')}</span></div>
+            <div><span class="badge ${u.papel}">${u.papel === 'admin' ? '👑 Admin' : u.papel === 'comercial' ? '🧑‍💼 Comercial' : '👤 ' + esc((FUNCOES.find(f => f.key === u.funcao) || {}).label || 'Equipe')}</span></div>
             <div>${esc(u.membroNome || '—')}</div>
             <div><button class="btn mini" onclick="abrirModalUsuario('${u.id}')">✏️ Editar</button></div>
           </div>`),
@@ -188,13 +188,16 @@
     function montarSelectPapel(valor) {
       document.getElementById('uPapel').innerHTML =
         '<option value="admin">👑 Administrador</option>' +
+        '<option value="comercial">🧑‍💼 Comercial (cadastra e edita clientes)</option>' +
         funcoesDeAcesso().map(f => `<option value="${f.key}" ${f.key === valor ? 'selected' : ''}>👤 ${esc(f.label)}</option>`).join('');
-      if (valor === 'admin') document.getElementById('uPapel').value = 'admin';
+      if (valor === 'admin' || valor === 'comercial') document.getElementById('uPapel').value = valor;
     }
 
     function toggleMembro() {
+      const papelSel = document.getElementById('uPapel').value;
+      // Comercial vê a carteira inteira (igual admin), não precisa de membro vinculado
       document.getElementById('campoMembro').style.display =
-        document.getElementById('uPapel').value !== 'admin' ? 'block' : 'none';
+        (papelSel !== 'admin' && papelSel !== 'comercial') ? 'block' : 'none';
     }
 
     function abrirModalUsuario(id) {
@@ -206,7 +209,7 @@
       document.getElementById('uLogin').disabled = !!u;
       document.getElementById('uSenha').value = '';
       document.getElementById('rotuloSenha').textContent = u ? 'Nova senha (vazio = manter)' : 'Senha * (mín. 6)';
-      montarSelectPapel(u ? (u.papel === 'admin' ? 'admin' : (u.funcao || funcoesDeAcesso()[0].key)) : funcoesDeAcesso()[0].key);
+      montarSelectPapel(u ? (['admin', 'comercial'].includes(u.papel) ? u.papel : (u.funcao || funcoesDeAcesso()[0].key)) : funcoesDeAcesso()[0].key);
       document.getElementById('uMembro').innerHTML = '<option value="">— nenhum —</option>' +
         EQUIPE.map(m => `<option value="${esc(m.nome)}" ${u?.membroNome === m.nome ? 'selected' : ''}>${esc(m.nome)}</option>`).join('');
       toggleMembro();
@@ -227,10 +230,11 @@
     document.getElementById('formUsuario').addEventListener('submit', async (e) => {
       e.preventDefault();
       const papelSel = document.getElementById('uPapel').value;
+      const ehEspecial = papelSel === 'admin' || papelSel === 'comercial'; // não são funções de cliente
       const corpo = {
         nome: document.getElementById('uNome').value,
-        papel: papelSel === 'admin' ? 'admin' : 'gestor',
-        funcao: papelSel === 'admin' ? null : papelSel,
+        papel: ehEspecial ? papelSel : 'gestor',
+        funcao: ehEspecial ? null : papelSel,
         membroNome: document.getElementById('uMembro').value || null,
       };
       const senha = document.getElementById('uSenha').value;

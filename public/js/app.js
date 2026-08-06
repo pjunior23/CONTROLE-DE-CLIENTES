@@ -105,7 +105,7 @@ async function montarSidebar(paginaAtiva) {
     </nav>
     <div class="user-card">
       <div class="nome">${esc(user.nome)}</div>
-      <div class="papel">${user.papel === 'admin' ? '👑 Administrador' : '👤 ' + esc(FUNCAO_LABEL[user.funcao] || 'Equipe')}</div>
+      <div class="papel">${user.papel === 'admin' ? '👑 Administrador' : user.papel === 'comercial' ? '🧑‍💼 Comercial' : '👤 ' + esc(FUNCAO_LABEL[user.funcao] || 'Equipe')}</div>
       <div class="acoes">
         <button onclick="alternarTema()" title="Alternar tema claro/escuro">🌓 Tema</button>
         <button onclick="sair()">🚪 Sair</button>

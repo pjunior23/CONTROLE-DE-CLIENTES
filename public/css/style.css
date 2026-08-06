@@ -132,6 +132,7 @@ a { color: inherit; text-decoration: none; }
 .badge.nao           { background: rgba(231,76,60,.18); color: var(--vermelho); }
 .badge.admin         { background: rgba(196,151,59,.18); color: var(--ouro1); }
 .badge.gestor        { background: rgba(52,152,219,.15); color: var(--azul); }
+.badge.comercial     { background: rgba(233,30,140,.15); color: var(--rosa1); }
 
 /* ---------- Tabelas em grid ---------- */
 .tabela { display: flex; flex-direction: column; gap: 6px; }

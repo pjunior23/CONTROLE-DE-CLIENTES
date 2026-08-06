@@ -40,7 +40,7 @@
     (async () => {
       const user = await montarSidebar('dashboard.html');
       document.getElementById('saudacao').textContent =
-        user.papel === 'admin' ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
+        (user.papel === 'admin' || user.papel === 'comercial') ? 'Visão geral da carteira completa' : `Seus clientes, ${user.nome}`;
 
       const [clientes, alertas] = await Promise.all([api('/api/clientes'), api('/api/alertas')]);
       ['inauguracoes', 'aniversarios', 'saidas', 'pendencias'].forEach(k => { if (!alertas[k]) alertas[k] = []; });

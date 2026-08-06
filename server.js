@@ -84,7 +84,7 @@ async function seedAdmin() {
       login,
       senhaHash: bcrypt.hashSync(senha, 10),
       nome: 'Administrador',
-      papel: 'admin',       // 'admin' | 'gestor'
+      papel: 'admin',       // 'admin' | 'gestor' | 'comercial'
       funcao: null,
       membroNome: null,     // gestores: nome do membro da equipe correspondente
       criadoEm: new Date().toISOString(),
@@ -115,10 +115,21 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Gestor enxerga apenas clientes onde o membro vinculado aparece em alguma função
+// Comercial: cadastra e edita clientes (vê a carteira inteira, igual ao admin), mas não
+// exclui cliente nem mexe em equipe/usuários/faturamento/relatórios — só o admin faz isso.
+function requireGerenciarClientes(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ erro: 'Não autenticado' });
+  if (!['admin', 'comercial'].includes(req.session.user.papel)) {
+    return res.status(403).json({ erro: 'Sem permissão para cadastrar/editar clientes' });
+  }
+  next();
+}
+
+// Gestor enxerga apenas clientes onde o membro vinculado aparece em alguma função.
+// Admin e Comercial enxergam a carteira inteira.
 async function clientesVisiveis(user) {
   const todos = (await db.clientes()).filter(c => c.agencyId === user.agencyId);
-  if (user.papel === 'admin') return todos;
+  if (user.papel === 'admin' || user.papel === 'comercial') return todos;
   const nome = (user.membroNome || '').trim().toUpperCase();
   if (!nome) return [];
   // Nomes compostos ("Juliana/Paula") contam para cada pessoa
@@ -201,7 +212,7 @@ function montarCliente(body, existente) {
   return cli;
 }
 
-app.post('/api/clientes', requireAdmin, rota(async (req, res) => {
+app.post('/api/clientes', requireGerenciarClientes, rota(async (req, res) => {
   const erro = validarCliente(req.body);
   if (erro) return res.status(400).json({ erro });
   const clientes = await db.clientes();
@@ -214,7 +225,7 @@ app.post('/api/clientes', requireAdmin, rota(async (req, res) => {
   res.status(201).json(novo);
 }));
 
-app.put('/api/clientes/:id', requireAdmin, rota(async (req, res) => {
+app.put('/api/clientes/:id', requireGerenciarClientes, rota(async (req, res) => {
   const clientes = await db.clientes();
   const idx = clientes.findIndex(c => c.id === req.params.id);
   if (idx === -1) return res.status(404).json({ erro: 'Cliente não encontrado' });
@@ -391,7 +402,7 @@ app.post('/api/usuarios', requireAdmin, rota(async (req, res) => {
   const { login, senha, nome, papel, funcao, membroNome } = req.body || {};
   if (!login || !senha || !nome) return res.status(400).json({ erro: 'Informe login, senha e nome' });
   if (senha.length < 6) return res.status(400).json({ erro: 'Senha precisa de ao menos 6 caracteres' });
-  if (!['admin', 'gestor'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
+  if (!['admin', 'gestor', 'comercial'].includes(papel)) return res.status(400).json({ erro: 'Papel inválido' });
   const usuarios = await db.usuarios();
   if (usuarios.some(u => u.login.toLowerCase() === login.toLowerCase())) {
     return res.status(400).json({ erro: 'Login já em uso' });
@@ -400,6 +411,7 @@ app.post('/api/usuarios', requireAdmin, rota(async (req, res) => {
     id: crypto.randomUUID(), agencyId: DEFAULT_AGENCY,
     login: String(login).trim(), senhaHash: bcrypt.hashSync(senha, 10),
     nome: String(nome).trim(), papel,
+    // Comercial não é vinculado a uma função de cliente nem a um membro específico — vê a carteira inteira
     funcao: papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null,
     membroNome: papel === 'gestor' ? String(membroNome || '').trim() || null : null,
     criadoEm: new Date().toISOString(),
@@ -420,7 +432,7 @@ app.put('/api/usuarios/:id', requireAdmin, rota(async (req, res) => {
     u.senhaHash = bcrypt.hashSync(senha, 10);
   }
   if (nome) u.nome = String(nome).trim();
-  if (papel && ['admin', 'gestor'].includes(papel)) u.papel = papel;
+  if (papel && ['admin', 'gestor', 'comercial'].includes(papel)) u.papel = papel;
   if (funcao !== undefined) u.funcao = u.papel === 'gestor' && FUNCOES.some(f => f.key === funcao) ? funcao : null;
   if (membroNome !== undefined) u.membroNome = u.papel === 'gestor' ? String(membroNome || '').trim() || null : null;
   await db.saveUsuarios(usuarios);

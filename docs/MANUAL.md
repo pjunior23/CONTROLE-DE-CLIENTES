@@ -12,6 +12,8 @@ Importante: de vez em quando o sistema é atualizado e todo mundo é desconectad
 
 **👑 Administrador** vê a carteira completa, cadastra e edita clientes, gerencia a equipe e as contas de acesso, lança faturamento de qualquer cliente e baixa todos os relatórios.
 
+**🧑‍💼 Comercial** vê a carteira completa (igual ao administrador) e pode cadastrar e editar clientes — pensado pro time comercial fechar um cliente novo e já lançar no sistema. Não exclui cliente e não tem acesso a equipe, contas de acesso, faturamento nem relatórios.
+
 **📈 Gestor de Tráfego** vê apenas os clientes em que aparece como responsável em alguma função. A visão é de consulta: se algum dado estiver errado, avise o administrador para corrigir.
 
 **💰 Estrategista de Atendimento** é um Gestor de Tráfego com a função "Estrategista de Atendimento" marcada no cadastro. Além da visão normal de Gestor, ele também acessa a tela de **Faturamento**, mas só dos clientes onde ele é o responsável de Atendimento.
@@ -68,7 +70,7 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 
 **Membros da Equipe**: a lista de nomes que aparece nos dropdowns de responsáveis. Cadastre todo mundo antes de montar os clientes. Remover um membro não altera os clientes já cadastrados.
 
-**Contas de Acesso**: onde se criam os logins. Para um gestor, escolha o papel "Gestor de Tráfego", **vincule ao membro da equipe correspondente** (define quais clientes ele enxerga) e, se for o caso, marque a função "Estrategista de Atendimento" pra liberar o acesso ao Faturamento. Para trocar uma senha, edite o usuário e digite a nova senha (deixe em branco para manter a atual). Você não consegue excluir a própria conta.
+**Contas de Acesso**: onde se criam os logins. Para um gestor, escolha o papel "Gestor de Tráfego", **vincule ao membro da equipe correspondente** (define quais clientes ele enxerga) e, se for o caso, marque a função "Estrategista de Atendimento" pra liberar o acesso ao Faturamento. Para dar acesso ao time comercial, escolha o papel "🧑‍💼 Comercial" — não precisa vincular a nenhum membro da equipe, já que ele vê a carteira inteira. Para trocar uma senha, edite o usuário e digite a nova senha (deixe em branco para manter a atual). Você não consegue excluir a própria conta.
 
 ## Perguntas frequentes
 
@@ -126,3 +128,7 @@ Central de relatórios em PDF pra compartilhar com o time ou a diretoria:
 ## Novidades da versão 5
 
 **Dados migrados pro Supabase**: os dados do sistema (clientes, faturamento, equipe, contas de acesso) agora ficam guardados num banco de dados de verdade (Postgres, hospedado no Supabase), com **backup automático**. Antes ficavam em arquivos dentro do Railway, sem backup — se o servidor tivesse algum problema sério, havia risco de perder tudo. Pra quem usa o sistema no dia a dia isso não muda nada visualmente; é só uma proteção a mais nos bastidores.
+
+## Novidades da versão 6
+
+**Novo papel: 🧑‍💼 Comercial**: agora dá pra dar acesso ao time comercial pra cadastrar cliente novo direto no sistema, sem precisar do administrador. Comercial vê a carteira inteira e pode cadastrar e editar clientes, mas não exclui nenhum e não tem acesso a equipe, contas de acesso, faturamento ou relatórios — isso continua só com o administrador.

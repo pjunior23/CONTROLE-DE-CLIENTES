@@ -163,7 +163,7 @@
       document.getElementById('contagem').textContent = st === 'saiu'
         ? `${filtrados.length} clientes no histórico`
         : `${filtrados.length} de ${total} clientes`;
-      const podeEditar = window.USUARIO.papel === 'admin';
+      const podeEditar = window.USUARIO.papel === 'admin' || window.USUARIO.papel === 'comercial';
       document.getElementById('tabela').innerHTML = [
         `<div class="linha cabecalho" style="${grade}"><div>Cliente</div><div>Status</div><div>Serviços</div><div>Atendimento</div><div>Planejamento</div><div>Copy</div><div>Consultor</div></div>`,
         ...filtrados.map(c => {
@@ -209,7 +209,8 @@
         <div><label>👤 ${esc(f.label)}</label><select data-funcao="${f.key}">${opcoesEquipe(f.key, c?.responsaveis?.[f.key] || '')}</select></div>`).join('')
         + `<div><label>🎨 Artes semanais <small style="color:var(--texto-suave)">(por semana no contrato; vazio se não tem)</small></label><input type="number" id="cArtes" min="0" step="1" placeholder="Ex.: 4"></div>`;
       document.getElementById('cArtes').value = c?.artesSemanais ?? '';
-      document.getElementById('btnExcluir').style.display = c ? 'inline-block' : 'none';
+      // Excluir é só do admin — Comercial cadastra e edita, mas não apaga cliente
+      document.getElementById('btnExcluir').style.display = (c && window.USUARIO.papel === 'admin') ? 'inline-block' : 'none';
       document.getElementById('modalErro').textContent = '';
       document.getElementById('modalFundo').classList.add('aberto');
     }
@@ -298,7 +299,7 @@
 
     (async () => {
       const user = await montarSidebar('clientes.html');
-      if (user.papel === 'admin') document.getElementById('btnNovo').style.display = 'inline-block';
+      if (user.papel === 'admin' || user.papel === 'comercial') document.getElementById('btnNovo').style.display = 'inline-block';
       FUNCOES = (await api('/api/meta')).funcoes;
       // Filtro vindo dos cards do dashboard (?status=...)
       const params = new URLSearchParams(location.search);
@@ -308,7 +309,7 @@
       await carregar();
       // Abrir direto o cadastro de um cliente específico (vindo da Visão por Pessoa, por exemplo)
       const abrirId = params.get('abrir');
-      if (abrirId && user.papel === 'admin') abrirModal(abrirId);
+      if (abrirId && (user.papel === 'admin' || user.papel === 'comercial')) abrirModal(abrirId);
     })();
   </script>
 </body>
